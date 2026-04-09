@@ -2,10 +2,6 @@
 
 **Transform any folder into a knowledge graph using 4 transversal modes: MICRO · MACRO · MESO · META**
 
-[![PyPI version](https://badge.fury.io/py/subit-nous.svg)](https://badge.fury.io/py/subit-nous)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
-
 > **NOUS** (νοῦς) — the intellect that perceives archetypes.  
 > **SUBIT** — a 4D framework (WHO × WHERE × WHEN × WHY).
 

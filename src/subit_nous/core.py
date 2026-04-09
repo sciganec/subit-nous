@@ -4,6 +4,12 @@ __version__ = "2.0.0"
 
 from enum import Enum
 from typing import Dict, Tuple, Optional
+import numpy as np
+
+from .subit_algebra import Subit
+
+def text_to_subit_object(text: str) -> Subit:
+    return Subit(text_to_subit(text))
 
 # ============ ВИМІРИ (ENUM) ============
 
@@ -45,6 +51,16 @@ MODE_FOR_ARCHETYPE = {
     0b01010101: "MESO",    # 85
     0b00000000: "META",    # 0
 }
+
+# Мапінг назв модусів до бітових значень (MODE axis)
+MODE_VALUES = {
+    "STATE": 0b10,   # LOGOS
+    "VALUE": 0b11,   # ETHOS
+    "FORM": 0b01,    # PATHOS
+    "FORCE": 0b00,   # THYMOS
+}
+
+MODE_NAMES = {v: k for k, v in MODE_VALUES.items()}
 
 # ============ МАРКЕРИ ============
 
@@ -134,3 +150,69 @@ def subit_to_coords(archetype: int) -> Tuple[int, int, int, int]:
         (archetype >> 2) & 0b11,
         archetype & 0b11,
     )
+
+def _dimension_soft(text: str, dim_markers: Dict[int, list]) -> tuple:
+    """
+    Повертає два soft-біти для одного виміру (наприклад, WHO).
+    Значення в [-1,1]: позитивне → біт тяжіє до 1, негативне → до 0.
+    """
+    text_lower = text.lower()
+    scores = {bits: 0 for bits in dim_markers}
+    for bits, words in dim_markers.items():
+        for w in words:
+            if w in text_lower:
+                scores[bits] += len(w)
+    total = sum(scores.values())
+    if total == 0:
+        return (0.0, 0.0)
+    # Нормалізуємо до [0,1]
+    probs = {bits: scores[bits] / total for bits in dim_markers}
+    # Для двох бітів (b1, b2) де:
+    # bits = (b1<<1) | b2 ? Ні. У нас bits: 10,11,01,00.
+    # Нехай b1 – старший біт (2¹), b2 – молодший (2⁰).
+    # Тоді:
+    # 10: b1=1, b2=0
+    # 11: b1=1, b2=1
+    # 01: b1=0, b2=1
+    # 00: b1=0, b2=0
+    # Ймовірність b1=1 = P(10)+P(11)
+    # Ймовірність b2=1 = P(11)+P(01)
+    p_b1 = probs.get(0b10, 0) + probs.get(0b11, 0)
+    p_b2 = probs.get(0b11, 0) + probs.get(0b01, 0)
+    # Перетворюємо [0,1] → [-1,1] через 2*p-1
+    soft_b1 = 2 * p_b1 - 1
+    soft_b2 = 2 * p_b2 - 1
+    return (soft_b1, soft_b2)
+
+def text_to_soft(text: str, chunk_size: int = 1000) -> np.ndarray:
+    """
+    Перетворює текст у 8-вимірний soft-вектор (значення в [-1,1]).
+    Порядок бітів: [WHO_b1, WHO_b2, WHERE_b1, WHERE_b2, WHEN_b1, WHEN_b2, WHY_b1, WHY_b2]
+    """
+    sample = text[:chunk_size].lower()
+    soft_parts = []
+    for dim in ['WHO', 'WHERE', 'WHEN', 'WHY']:
+        b1, b2 = _dimension_soft(sample, MARKERS[dim])
+        soft_parts.extend([b1, b2])
+    return np.array(soft_parts, dtype=np.float32)
+
+def soft_to_hard(soft_vec: np.ndarray) -> int:
+    """
+    Перетворює soft-вектор у жорсткий архетип (поріг 0).
+    """
+    bits = 0
+    for i, val in enumerate(soft_vec):
+        if val > 0:
+            bits |= (1 << (7 - i))   # старший біт – індекс 0
+    return bits
+
+from .subit_algebra import Subit
+
+def text_to_subit_object(text: str, chunk_size: int = 1000) -> Subit:
+    """Повертає об'єкт Subit для заданого тексту."""
+    return Subit(text_to_subit(text, chunk_size))
+
+def soft_to_subit_object(soft_vec: np.ndarray) -> Subit:
+    """Перетворює soft-вектор у Subit (поріг 0)."""
+    bits = soft_to_hard(soft_vec)
+    return Subit(bits)
