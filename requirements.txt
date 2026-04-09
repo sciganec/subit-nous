@@ -1,0 +1,14 @@
+# Core dependencies
+networkx>=3.0
+plotly>=5.0
+typer>=0.9.0
+rich>=13.0
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+websockets>=12.0
+watchdog>=3.0.0
+
+# Optional (uncomment if needed)
+# PyPDF2>=3.0.0   # for PDF support
+# Pillow>=10.0.0  # for image fallback
+# requests>=2.31.0 # for Claude Vision API
