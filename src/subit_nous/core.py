@@ -216,3 +216,35 @@ def soft_to_subit_object(soft_vec: np.ndarray) -> Subit:
     """Перетворює soft-вектор у Subit (поріг 0)."""
     bits = soft_to_hard(soft_vec)
     return Subit(bits)
+
+def cosine_similarity(soft1: np.ndarray, soft2: np.ndarray) -> float:
+    """Косинусна подібність між двома soft-векторами (в [-1,1]⁸)."""
+    dot = np.dot(soft1, soft2)
+    norm1 = np.linalg.norm(soft1)
+    norm2 = np.linalg.norm(soft2)
+    if norm1 == 0 or norm2 == 0:
+        return 0.0
+    return dot / (norm1 * norm2)
+
+def interpolate_soft(soft1: np.ndarray, soft2: np.ndarray, alpha: float = 0.5) -> np.ndarray:
+    """Лінійна інтерполяція: (1-alpha)*soft1 + alpha*soft2."""
+    return (1 - alpha) * soft1 + alpha * soft2
+
+def soft_to_radar_chart(soft_vec: np.ndarray, output_file: str = "radar.html") -> None:
+    """Створює радарну діаграму для 8-бітного soft-вектора."""
+    import plotly.graph_objects as go
+    categories = ['b7 (WHO1)', 'b6 (WHO2)', 'b5 (WHERE1)', 'b4 (WHERE2)',
+                  'b3 (WHEN1)', 'b2 (WHEN2)', 'b1 (WHY1)', 'b0 (WHY2)']
+    fig = go.Figure(data=go.Scatterpolar(
+        r=soft_vec.tolist(),
+        theta=categories,
+        fill='toself',
+        marker=dict(color='blue')
+    ))
+    fig.update_layout(
+        polar=dict(radialaxis=dict(visible=True, range=[-1, 1])),
+        showlegend=False,
+        title="Soft SUBIT Profile (Radar Chart)"
+    )
+    fig.write_html(output_file)
+    print(f"✅ Radar chart saved to {output_file}")

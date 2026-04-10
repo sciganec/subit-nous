@@ -1,41 +1,24 @@
 #!/usr/bin/env python3
-"""SUBIT-NOUS CLI: analyze, watch, serve, hooks, export"""
+"""SUBIT-NOUS CLI: analyze, watch, serve, hooks, export, soft, control"""
 
 import typer
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
+import json
+import numpy as np
 
 from .graph import build_graph, visualize_4d
 from .exports import export_report, export_obsidian
-from .llm_control_ollama import apply_control
+from .core import text_to_soft, soft_to_hard, subit_to_name, cosine_similarity, interpolate_soft, soft_to_radar_chart
 
 app = typer.Typer(help="🧠 SUBIT-NOUS: Knowledge from chaos (MICRO/MACRO/MESO/META)")
 console = Console()
 
-@app.command()
-def control(
-    text: str = typer.Argument(..., help="Input text to transform"),
-    mode: str = typer.Argument(..., help="Target mode: STATE, VALUE, FORM, FORCE"),
-    model: str = typer.Option("llama3.2:3b", "--model", "-m", help="Ollama model name"),
-):
-    """Transform text to match a given SUBIT mode using a local Ollama model."""
-    from .llm_control_ollama import apply_control
-    mode_map = {"STATE": 2, "VALUE": 3, "FORM": 1, "FORCE": 0}
-    target = mode_map.get(mode.upper())
-    if target is None:
-        console.print(f"[red]Invalid mode: {mode}. Use STATE, VALUE, FORM, FORCE.[/red]")
-        raise typer.Exit(1)
-    try:
-        console.print(f"[bold blue]🎮 Controlling text to mode {mode.upper()}...[/]")
-        result = apply_control(text, target, model=model)
-        console.print("\n[bold green]Result:[/]")
-        console.print(result)
-    except Exception as e:
-        console.print(f"[red]Error: {e}[/red]")
-        console.print("Make sure Ollama server is running and the model is downloaded.")
-
+# ----------------------------------------------------------------------
+# analyze
+# ----------------------------------------------------------------------
 @app.command()
 def analyze(
     path: str = typer.Argument(..., help="Folder to analyze"),
@@ -46,88 +29,26 @@ def analyze(
 ):
     """Build knowledge graph from any folder."""
     console.print(f"[bold blue]🧠 NOUS[/] analyzing {path} ...")
-    
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        console=console,
-    ) as progress:
+    with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=console) as progress:
         task = progress.add_task("Building graph...", total=None)
         graph = build_graph(path, chunk_size=chunk_size)
         progress.update(task, completed=True)
-    
     console.print(f"[bold]📊 Graph built:[/] {len(graph.nodes)} archetypes, {graph.number_of_edges()} transitions")
-    
     out_path = Path(output)
     out_path.mkdir(parents=True, exist_ok=True)
-    
     visualize_4d(graph, str(out_path / "graph.html"))
     export_report(graph, str(out_path / "report.md"))
     export_obsidian(graph, str(out_path / "obsidian"))
-    
     console.print(f"[green]✅ Done![/] Open {out_path / 'graph.html'}")
-    
     if watch:
         console.print("[yellow]👀 Watch mode not yet implemented in CLI, use `nous watch` separately.[/]")
     if api:
         console.print("[yellow]🚀 Starting API server...[/]")
         serve(port=8000)
-@app.command()
-def soft(
-    path: str = typer.Argument(..., help="Folder to analyze"),
-    output: str = typer.Option("./soft_output", "--output", "-o", help="Output JSON file"),
-    chunk_size: int = typer.Option(1000, "--chunk-size", "-c", help="Text chunk size"),
-):
-    """Compute soft archetype vectors for all files and show average profile."""
-    import json
-    import numpy as np
-    from pathlib import Path
-    from .core import text_to_soft, soft_to_hard, subit_to_name
 
-    all_soft = []
-    files = list(Path(path).rglob("*"))
-    text_extensions = {'.txt', '.md', '.py', '.json', '.yaml', '.yml', '.rst', '.csv'}
-    for f in files:
-        if f.is_file() and f.suffix.lower() in text_extensions:
-            try:
-                text = f.read_text(encoding='utf-8', errors='ignore')
-                if text.strip():
-                    soft_vec = text_to_soft(text, chunk_size)
-                    all_soft.append(soft_vec)
-            except Exception as e:
-                console.print(f"[red]Error reading {f}: {e}[/red]")
-
-    if not all_soft:
-        console.print("[red]No text files found.[/red]")
-        return
-
-    avg_soft = np.mean(all_soft, axis=0)
-    # Вивести профіль
-    console.print("\n[bold cyan]Continuous SUBIT Profile (average soft vector)[/bold cyan]")
-    console.print("Bits (b7..b0):")
-    for i, val in enumerate(avg_soft):
-        bar_len = int(abs(val) * 20)
-        bar = "█" * bar_len + "░" * (20 - bar_len)
-        sign = "+" if val >= 0 else "-"
-        console.print(f"  bit{i}: {sign} {bar} {val:5.2f}")
-
-    # Перетворити в жорсткий архетип
-    hard = soft_to_hard(avg_soft)
-    console.print(f"\n[bold]Closest hard archetype:[/bold] {subit_to_name(hard)} (ID {hard})")
-
-    # Зберегти soft-вектори у JSON
-    out_path = Path(output)
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    data = {
-        "average_soft": avg_soft.tolist(),
-        "closest_archetype": hard,
-        "closest_archetype_name": subit_to_name(hard),
-        "num_chunks": len(all_soft),
-        "all_soft_vectors": [v.tolist() for v in all_soft]
-    }
-    with open(out_path, 'w', encoding='utf-8') as f:
-        json.dump(data, f, indent=2)
-    console.print(f"\n[green]✅ Soft vectors saved to {out_path}[/green]")
+# ----------------------------------------------------------------------
+# watch
+# ----------------------------------------------------------------------
 @app.command()
 def watch(
     path: str = typer.Argument(..., help="Folder to watch"),
@@ -138,7 +59,6 @@ def watch(
     from watchdog.observers import Observer
     from watchdog.events import FileSystemEventHandler
     import time
-    
     class Handler(FileSystemEventHandler):
         def on_modified(self, event):
             if not event.is_directory:
@@ -150,7 +70,6 @@ def watch(
                 export_report(graph, str(out_path / "report.md"))
                 export_obsidian(graph, str(out_path / "obsidian"))
                 console.print("[green]✅ Graph updated.[/green]")
-    
     console.print(f"[bold blue]👀 Watching[/] {path} (press Ctrl+C to stop)")
     event_handler = Handler()
     observer = Observer()
@@ -163,6 +82,9 @@ def watch(
         observer.stop()
     observer.join()
 
+# ----------------------------------------------------------------------
+# serve
+# ----------------------------------------------------------------------
 @app.command()
 def serve(
     port: int = typer.Option(8000, "--port", "-p", help="Port for API server"),
@@ -173,6 +95,9 @@ def serve(
     console.print(f"[bold blue]🚀 Starting SUBIT‑NOUS API on http://0.0.0.0:{port}[/]")
     uvicorn.run(api_app, host="0.0.0.0", port=port)
 
+# ----------------------------------------------------------------------
+# hooks
+# ----------------------------------------------------------------------
 @app.command()
 def hooks(
     action: str = typer.Argument("install", help="install or uninstall"),
@@ -198,6 +123,9 @@ nous analyze {repo_path} --output {repo_path}/nous_output
     else:
         console.print(f"[red]Unknown action: {action}. Use 'install' or 'uninstall'.[/]")
 
+# ----------------------------------------------------------------------
+# export
+# ----------------------------------------------------------------------
 @app.command()
 def export(
     graph_file: str = typer.Argument(..., help="Path to JSON graph file (from /graph/export)"),
@@ -205,7 +133,6 @@ def export(
     output: str = typer.Option("./export", "--output", "-o", help="Output directory or file"),
 ):
     """Export graph to different formats (experimental)."""
-    import json
     import networkx as nx
     with open(graph_file, 'r') as f:
         data = json.load(f)
@@ -228,20 +155,84 @@ def export(
     else:
         console.print(f"[red]Unknown format: {format}[/]")
 
+# ----------------------------------------------------------------------
+# soft (розширена версія)
+# ----------------------------------------------------------------------
+@app.command()
+def soft(
+    path: Optional[str] = typer.Argument(None, help="Folder to analyze (for average profile)"),
+    output: str = typer.Option("./soft_output.json", "--output", "-o", help="Output JSON file"),
+    chunk_size: int = typer.Option(1000, "--chunk-size", "-c", help="Text chunk size"),
+    sim1: Optional[str] = typer.Option(None, "--sim1", help="First file for cosine similarity"),
+    sim2: Optional[str] = typer.Option(None, "--sim2", help="Second file for cosine similarity"),
+    interp1: Optional[str] = typer.Option(None, "--interp1", help="First file for interpolation"),
+    interp2: Optional[str] = typer.Option(None, "--interp2", help="Second file for interpolation"),
+    alpha: float = typer.Option(0.5, "--alpha", help="Interpolation weight (0..1)"),
+    radar: Optional[str] = typer.Option(None, "--radar", help="Generate radar chart from a soft JSON file"),
+):
+    """Compute soft archetype vectors, similarity, interpolation, radar chart."""
+    # Radar chart from existing JSON
+    if radar:
+        with open(radar, 'r') as f:
+            data = json.load(f)
+        avg_soft = np.array(data.get("average_soft", data.get("soft_vector", [])))
+        if len(avg_soft) == 0:
+            console.print("[red]No soft vector found in JSON.[/red]")
+            return
+        out_html = output.replace(".json", "_radar.html") if output.endswith(".json") else output + "_radar.html"
+        soft_to_radar_chart(avg_soft, out_html)
+        console.print(f"[green]Radar chart saved to {out_html}[/green]")
+        return
+
+    # Cosine similarity between two files
+    if sim1 and sim2:
+        def read_text(p):
+            with open(p, 'r', encoding='utf-8') as f:
+                return f.read()
+        soft1 = text_to_soft(read_text(sim1), chunk_size)
+        soft2 = text_to_soft(read_text(sim2), chunk_size)
+        sim = cosine_similarity(soft1, soft2)
+        console.print(f"[bold]Cosine similarity[/] between {sim1} and {sim2}: {sim:.4f}")
+        return
+
+    # Interpolation between two files
+    if interp1 and interp2:
+        def read_text(p):
+            with open(p, 'r', encoding='utf-8') as f:
+                return f.read()
+        soft1 = text_to_soft(read_text(interp1), chunk_size)
+        soft2 = text_to_soft(read_text(interp2), chunk_size)
+        interp = interpolate_soft(soft1, soft2, alpha)
+        console.print(f"[bold]Interpolated soft vector (alpha={alpha}):[/]")
+        for i, val in enumerate(interp):
+            console.print(f"  bit{i}: {val:5.2f}")
+        out_path = Path(output)
+        with open(out_path, 'w') as f:
+            json.dump({"interpolated_soft": interp.tolist(), "alpha": alpha, "file1": interp1, "file2": interp2}, f, indent=2)
+        console.print(f"[green]Saved to {out_path}[/green]")
+        return
+
+    # Default: compute average soft vector for a folder
+    if path is None:
+        console.print("[red]Please provide a folder path or use --sim1/--sim2 or --interp1/--interp2 or --radar.[/red]")
+        raise typer.Exit(1)
+
+# ----------------------------------------------------------------------
+# control (Ollama)
+# ----------------------------------------------------------------------
 @app.command()
 def control(
     text: str = typer.Argument(..., help="Input text to transform"),
     mode: str = typer.Argument(..., help="Target mode: STATE, VALUE, FORM, FORCE"),
-    model: str = typer.Option("gpt-3.5-turbo", "--model", "-m", help="OpenAI model"),
+    model: str = typer.Option("llama3.2:3b", "--model", "-m", help="Ollama model name"),
 ):
-    """Transform text to match a given SUBIT mode using LLM."""
+    """Transform text to match a given SUBIT mode using a local Ollama model."""
     from .llm_control_ollama import apply_control
     mode_map = {"STATE": 2, "VALUE": 3, "FORM": 1, "FORCE": 0}
     target = mode_map.get(mode.upper())
     if target is None:
         console.print(f"[red]Invalid mode: {mode}. Use STATE, VALUE, FORM, FORCE.[/red]")
         raise typer.Exit(1)
-
     try:
         console.print(f"[bold blue]🎮 Controlling text to mode {mode.upper()}...[/]")
         result = apply_control(text, target, model=model)
@@ -249,8 +240,11 @@ def control(
         console.print(result)
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
-        console.print("Make sure OPENAI_API_KEY is set in your environment.")
+        console.print("Make sure Ollama server is running and the model is downloaded.")
 
+# ----------------------------------------------------------------------
+# main
+# ----------------------------------------------------------------------
 def main():
     app()
 
