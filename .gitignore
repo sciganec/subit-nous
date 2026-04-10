@@ -138,8 +138,6 @@ dmypy.json
 test_output/
 nous_output/
 *.html
-*.md
-!README.md
 obsidian/
 .subit_cache/
 

@@ -57,7 +57,7 @@ Four axes, each with 4 values (2 bits):
 - **Similarity**: cosine, Euclidean
 - **Transformations**: axis flip, bit flip, axis permutation
 
-See [SUBIT‑v3.md](SUBIT-v3.md) for the full formal specification.
+See SUBIT_v3.md for the full formal specification.
 
 ---
 
