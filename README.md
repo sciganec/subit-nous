@@ -1,87 +1,131 @@
-# 🧠 SUBIT-NOUS
+# 🧠 SUBIT‑NOUS v3.0
 
-**Transform any folder into a knowledge graph using 4 transversal modes: MICRO · MACRO · MESO · META**
+## Formal algebraic coordinate system for meaning
 
-> **NOUS** (νοῦς) — the intellect that perceives archetypes.  
-> **SUBIT** — a 4D framework (WHO × WHERE × WHEN × WHY).
+> **NOUS** (νοῦς) – the intellect that perceives archetypes.  
+> **SUBIT** – a 4‑dimensional algebraic space over (ℤ₂)⁸.
 
-## One command. Any folder. Full knowledge graph.
+SUBIT‑NOUS turns any folder into a **computable knowledge graph** of 256 archetypes.  
+No LLM required for the core – but you can **control LLM generation** locally via Ollama.
+
+---
+
+## 🔗 One command. Any folder. Full knowledge graph.
 
 ```bash
 pip install subit-nous
-nous ./raw --output ./knowledge
+nous analyze ./raw --output ./knowledge
 ```
 
-## The SUBIT framework
+---
 
-Four dimensions, each with four categories, form **256 archetypes** (8 bits).  
-Four **transversal modes** cut across all dimensions:
+## ✨ What you get
 
-| Mode   | Bits | WHO  | WHERE | WHEN   | WHY     |
-|--------|------|------|-------|--------|---------|
-| **MICRO** | 10 | ME   | EAST  | SPRING | LOGOS   |
-| **MACRO** | 11 | WE   | SOUTH | SUMMER | ETHOS   |
-| **MESO**  | 01 | YOU  | WEST  | AUTUMN | PATHOS  |
-| **META**  | 00 | THEY | NORTH | WINTER | THYMOS  |
+- **Formal algebra** – XOR, distance, projection, replacement, axis flip, bit flip, axis permutation
+- **Continuous SUBIT** – soft vectors in ℝ⁸, cosine similarity, interpolation, radar charts
+- **Local LLM control** – rewrite any text into **STATE / VALUE / FORM / FORCE** mode using Ollama (no API key)
+- **Interactive 3D graph** – click, search, filter by community
+- **Markdown report** – god nodes, surprising connections, archetype profile with ASCII bars
+- **Obsidian vault** – backlinked knowledge base
+- **REST API + WebSocket** – real‑time analysis
+- **Git hooks** – auto‑sync on every commit
 
-Every text, PDF, or image is reduced to one of these 256 archetypes – **no LLM required**.
+---
 
-## Quick start
+## 📐 The SUBIT v3.0 framework
+
+Four axes, each with 4 values (2 bits):
+
+| Axis   | Values                           | Binary   |
+|--------|----------------------------------|----------|
+| WHO    | ME / WE / YOU / THEY             | 10/11/01/00 |
+| WHERE  | EAST / SOUTH / WEST / NORTH      | 10/11/01/00 |
+| WHEN   | SPRING / SUMMER / AUTUMN / WINTER | 10/11/01/00 |
+| MODE   | STATE / VALUE / FORM / FORCE     | 10/11/01/00 |
+
+Interface layer:  
+`STATE → LOGOS`, `VALUE → ETHOS`, `FORM → PATHOS`, `FORCE → THYMOS`.
+
+### Algebraic structure
+
+- **Space**: (ℤ₂)⁸  
+- **Operation**: XOR (commutative, associative, identity 0)  
+- **Metric**: Hamming distance  
+- **Embedding**: ℝ⁸ via {-1,+1} mapping  
+- **Similarity**: cosine, Euclidean  
+- **Transformations**: axis flip, bit flip, axis permutation  
+
+---
+
+## 🚀 Quick start
+
+### 1. Analyse a folder
 
 ```bash
-# Analyze a folder
-nous ./my-documents
+nous analyse ./my-documents
+```
 
-# Watch mode (auto‑update on changes)
-nous watch ./my-documents
+### 2. Watch mode (auto‑update on changes)
 
-# Start API server on port 8000
+```bash
+nous watch ./my-documents --output ./live_output
+```
+
+### 3. Start API server
+
+```bash
 nous serve --port 8000
+```
 
-# Install Git hooks for auto‑analysis
+### 4. Install Git hooks (auto‑analysis after commit)
+
+```bash
 nous hooks install .
 ```
 
-## Output
+### 5. Continuous SUBIT – soft vectors
 
-After running `nous ./raw`, you’ll find in `./nous_output`:
-
-- `graph.html` – interactive 3D/4D visualization
-- `report.md` – analytical report (top archetypes, unexpected connections)
-- `obsidian/` – an Obsidian vault with backlinked archetype pages
-- `metadata.json` – raw graph data
-
-## Why “NOUS”?
-
-In Greek philosophy, **NOUS** is the divine intellect that brings order from chaos and recognises eternal patterns. **SUBIT‑NOUS** brings this ancient wisdom to modern knowledge management.
-
-## Structure 
-
-```
-subit-nous/
-├── .github/workflows/publish.yml
-├── src/subit_nous/
-│   ├── __init__.py
-│   ├── core.py
-│   ├── graph.py
-│   ├── io.py
-│   ├── exports.py
-│   └── cli.py
-├── tests/
-│   ├── test_core.py
-│   └── fixtures/sample.txt
-├── examples/basic.py
-├── docs/README.md
-├── docker/
-│   ├── Dockerfile
-│   └── docker-compose.yml
-├── pyproject.toml
-├── requirements.txt
-├── LICENSE
-├── README.md
-└── Makefile
+```bash
+nous soft ./my-folder --output profile.json
+nous soft --sim1 file1.txt --sim2 file2.txt
+nous soft --interp1 file1.txt --interp2 file2.txt --alpha 0.3
+nous soft --radar profile.json
 ```
 
-## License
+### 6. Local LLM control (requires [Ollama](https://ollama.com))
+
+```bash
+nous control "I think logically about the east" STATE --model llama3.2:3b
+```
+
+---
+
+## 📦 Installation
+
+```bash
+pip install subit-nous
+```
+
+For development with all extras (testing, linting, local LLM):
+
+```bash
+pip install subit-nous[all]
+```
+
+---
+
+## 🧪 Example
+
+```bash
+git clone https://github.com/sciganec/subit-nous.git
+cd subit-nous
+pip install -e .
+nous analyse demo --output demo_out
+open demo_out/graph.html
+```
+
+---
+
+## 📄 License
 
 MIT
