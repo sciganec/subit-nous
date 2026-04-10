@@ -91,6 +91,26 @@ MARKERS = {
     }
 }
 
+def soft_to_radar_chart(soft_vec: np.ndarray, output_file: str = None) -> None:
+    """Створює радарну діаграму для 8-бітного soft-вектора."""
+    import plotly.graph_objects as go
+    categories = ['b7 (WHO1)', 'b6 (WHO2)', 'b5 (WHERE1)', 'b4 (WHERE2)',
+                  'b3 (WHEN1)', 'b2 (WHEN2)', 'b1 (MODE1)', 'b0 (MODE2)']
+    fig = go.Figure(data=go.Scatterpolar(
+        r=soft_vec.tolist(),
+        theta=categories,
+        fill='toself',
+        marker=dict(color='blue')
+    ))
+    fig.update_layout(
+        polar=dict(radialaxis=dict(visible=True, range=[-1, 1])),
+        showlegend=False,
+        title="Soft SUBIT Profile (Radar Chart)"
+    )
+    if output_file:
+        fig.write_html(output_file)
+    else:
+        fig.show()
 def _detect_dimension(text: str, dim_markers: Dict[int, list], dim_name: str = None) -> int:
     """Повертає 2-бітне значення для одного виміру з підвищеною вагою для займенників."""
     text_lower = text.lower()

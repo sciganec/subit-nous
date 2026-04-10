@@ -66,6 +66,45 @@ async def websocket_endpoint(websocket: WebSocket):
     except WebSocketDisconnect:
         pass
 
+@app.post("/search")
+async def search_endpoint(
+    query: str,
+    mode: Optional[str] = None,
+    who: Optional[str] = None,
+    where: Optional[str] = None,
+    when: Optional[str] = None,
+    top_k: int = 10,
+    alpha: float = 0.5,
+):
+    from .search import search as search_func
+    results = search_func(query, mode=mode, who=who, where=where, when=when, top_k=top_k, alpha=alpha)
+    return {"query": query, "results": results}
+
+@app.post("/agent")
+async def agent_endpoint(
+    text: str,
+    mode: str = "auto",
+    model: str = "llama3.2:3b",
+):
+    from .agent import run_agent, classify_and_run
+    if mode == "auto":
+        result = classify_and_run(text, model)
+        return {"mode": result["original_mode"], "response": result["agent_response"]}
+    else:
+        response = run_agent(text, mode, model)
+        return {"mode": mode, "response": response}
+
+@app.post("/pipeline")
+async def pipeline_endpoint(
+    text: str,
+    modes: str,
+    model: str = "llama3.2:3b",
+):
+    from .agent import run_pipeline
+    mode_list = [m.strip().upper() for m in modes.split(",")]
+    results = run_pipeline(text, mode_list, model)
+    return {"modes": mode_list, "steps": results}
+
 def main():
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

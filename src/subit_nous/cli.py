@@ -16,6 +16,95 @@ from .core import text_to_soft, soft_to_hard, subit_to_name, cosine_similarity, 
 app = typer.Typer(help="🧠 SUBIT-NOUS: Knowledge from chaos (MICRO/MACRO/MESO/META)")
 console = Console()
 
+@app.command()
+def ui(
+    port: int = typer.Option(8501, "--port", "-p", help="Port for web UI"),
+):
+    """Launch Streamlit web UI."""
+    import subprocess
+    import sys
+    from pathlib import Path
+    
+    ui_file = Path(__file__).parent / "ui.py"
+    if not ui_file.exists():
+        console.print("[red]UI file not found. Please reinstall the package.[/red]")
+        raise typer.Exit(1)
+    
+    console.print(f"[bold blue]🌐 Starting SUBIT‑NOUS UI at http://localhost:{port}[/]")
+    subprocess.run([sys.executable, "-m", "streamlit", "run", str(ui_file), "--server.port", str(port)])
+@app.command()
+def agent(
+    text: str = typer.Argument(..., help="Input text to process"),
+    mode: str = typer.Option("auto", "--mode", "-m", help="STATE, VALUE, FORM, FORCE, or auto"),
+    model: str = typer.Option("llama3.2:3b", "--model", help="Ollama model name"),
+    instructions: Optional[str] = typer.Option(None, "--instructions", "-i", help="Custom system prompt"),
+):
+    """Run an agent for a given mode (or auto-detect)."""
+    from .agent import run_agent, classify_and_run
+    
+    if mode.upper() == "AUTO":
+        console.print("[bold blue]🤖 Auto-detecting mode...[/]")
+        result = classify_and_run(text, model)
+        console.print(f"[dim]Detected mode: {result['original_mode']} (archetype: {result['original_archetype']})[/dim]")
+        console.print("\n[bold green]Agent response:[/]")
+        console.print(result['agent_response'])
+    else:
+        console.print(f"[bold blue]🤖 Running {mode.upper()} agent...[/]")
+        response = run_agent(text, mode.upper(), model, instructions)
+        console.print("\n[bold green]Response:[/]")
+        console.print(response)
+
+@app.command()
+def pipeline(
+    text: str = typer.Argument(..., help="Input text"),
+    modes: str = typer.Option(..., "--modes", "-m", help="Comma-separated modes: STATE,VALUE,FORM,FORCE"),
+    model: str = typer.Option("llama3.2:3b", "--model", help="Ollama model name"),
+):
+    """Run a multi-agent pipeline (sequential processing)."""
+    from .agent import run_pipeline
+    
+    mode_list = [m.strip().upper() for m in modes.split(",")]
+    console.print(f"[bold blue]🔗 Running pipeline: {' → '.join(mode_list)}[/]")
+    
+    results = run_pipeline(text, mode_list, model)
+    
+    for i, r in enumerate(results, 1):
+        console.print(f"\n[bold cyan]Step {i}: {r['mode']}[/]")
+        console.print(f"[dim]Input: {r['input']}[/dim]")
+        console.print(f"[green]Output: {r['output'][:200]}...[/green]" if len(r['output']) > 200 else f"[green]Output: {r['output']}[/green]")
+@app.command()
+def index(
+    path: str = typer.Argument(..., help="Folder to index"),
+    chunk_size: int = typer.Option(1000, "--chunk-size", "-c", help="Text chunk size"),
+):
+    """Index a folder for fast search."""
+    from .search import index_folder
+    console.print(f"[bold blue]📇 Indexing[/] {path} ...")
+    count = index_folder(path, chunk_size)
+    console.print(f"[green]✅ Indexed {count} documents.[/green]")
+
+@app.command()
+def search(
+    query: str = typer.Argument(..., help="Search query"),
+    mode: Optional[str] = typer.Option(None, "--mode", help="STATE, VALUE, FORM, FORCE"),
+    who: Optional[str] = typer.Option(None, "--who", help="ME, WE, YOU, THEY"),
+    where: Optional[str] = typer.Option(None, "--where", help="EAST, SOUTH, WEST, NORTH"),
+    when: Optional[str] = typer.Option(None, "--when", help="SPRING, SUMMER, AUTUMN, WINTER"),
+    top_k: int = typer.Option(10, "--top", "-k", help="Number of results"),
+    alpha: float = typer.Option(0.5, "--alpha", help="Weight for semantic similarity (0..1)"),
+):
+    """Hybrid search: SUBIT filter + cosine similarity."""
+    from .search import search as search_func
+    results = search_func(query, mode=mode, who=who, where=where, when=when, top_k=top_k, alpha=alpha)
+    if not results:
+        console.print("[yellow]No results found.[/yellow]")
+        return
+    console.print(f"\n[bold cyan]Top {len(results)} results:[/bold cyan]\n")
+    for i, r in enumerate(results, 1):
+        mode_name = {2:"STATE",3:"VALUE",1:"FORM",0:"FORCE"}.get(r["mode"], "?")
+        who_name = {2:"ME",3:"WE",1:"YOU",0:"THEY"}.get(r["who"], "?")
+        console.print(f"{i}. [bold]{r['path']}[/bold]")
+        console.print(f"   Score: {r['score']:.3f} (sim={r['similarity']:.3f}) | {mode_name} / {who_name}")
 # ----------------------------------------------------------------------
 # analyze
 # ----------------------------------------------------------------------

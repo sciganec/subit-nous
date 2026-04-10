@@ -12,7 +12,12 @@ def build_graph(folder_path: str, chunk_size: int = 1000) -> nx.DiGraph:
     path = Path(folder_path)
     
     text_extensions = {'.txt', '.md', '.py', '.json', '.yaml', '.yml', '.rst', '.csv', '.html', '.css', '.js'}
-    files = [f for f in path.rglob('*') if f.is_file() and f.suffix.lower() in text_extensions]
+    
+    # Якщо це файл, а не папка
+    if path.is_file():
+        files = [path]
+    else:
+        files = [f for f in path.rglob('*') if f.is_file() and f.suffix.lower() in text_extensions]
     
     if not files:
         print("⚠️ Текстові файли не знайдено.")
@@ -21,9 +26,8 @@ def build_graph(folder_path: str, chunk_size: int = 1000) -> nx.DiGraph:
     for filepath in files:
         try:
             text = filepath.read_text(encoding='utf-8', errors='ignore')
-            if text.strip():
-                subit = text_to_subit(text, chunk_size=chunk_size)
-                file_archetypes.append((filepath.name, subit))
+            subit = text_to_subit(text, chunk_size)
+            file_archetypes.append((filepath.name, subit))
         except Exception as e:
             print(f"Помилка читання {filepath}: {e}")
     
