@@ -14,7 +14,7 @@ from .exports import export_report, export_obsidian
 from .core import text_to_soft, soft_to_hard, subit_to_name, cosine_similarity, interpolate_soft, soft_to_radar_chart
 
 # Version
-__version__ = "3.1.0"
+__version__ = "4.0.0"
 
 app = typer.Typer(help="SUBIT-NOUS: Knowledge from chaos (MICRO/MACRO/MESO/META)")
 console = Console()
