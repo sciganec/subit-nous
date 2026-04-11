@@ -71,13 +71,11 @@ async def search_endpoint(
     query: str,
     mode: Optional[str] = None,
     who: Optional[str] = None,
-    where: Optional[str] = None,
-    when: Optional[str] = None,
     top_k: int = 10,
     alpha: float = 0.5,
 ):
     from .search import search as search_func
-    results = search_func(query, mode=mode, who=who, where=where, when=when, top_k=top_k, alpha=alpha)
+    results = search_func(query, mode=mode, who=who, top_k=top_k, alpha=alpha)
     return {"query": query, "results": results}
 
 @app.post("/agent")

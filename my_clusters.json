@@ -1,0 +1,84 @@
+{
+  "max_distance": 2,
+  "total_clusters": 5,
+  "total_nodes": 13,
+  "clusters": {
+    "0": {
+      "size": 3,
+      "archetypes": [
+        {
+          "id": 33,
+          "name": "PATHOS_THEY_EAST_WINTER"
+        },
+        {
+          "id": 0,
+          "name": "META mode"
+        },
+        {
+          "id": 105,
+          "name": "PATHOS_YOU_EAST_SPRING"
+        }
+      ]
+    },
+    "1": {
+      "size": 3,
+      "archetypes": [
+        {
+          "id": 255,
+          "name": "MACRO mode"
+        },
+        {
+          "id": 249,
+          "name": "PATHOS_WE_SOUTH_SPRING"
+        },
+        {
+          "id": 235,
+          "name": "ETHOS_WE_EAST_SPRING"
+        }
+      ]
+    },
+    "2": {
+      "size": 1,
+      "archetypes": [
+        {
+          "id": 85,
+          "name": "MESO mode"
+        }
+      ]
+    },
+    "3": {
+      "size": 5,
+      "archetypes": [
+        {
+          "id": 170,
+          "name": "MICRO mode"
+        },
+        {
+          "id": 178,
+          "name": "LOGOS_ME_SOUTH_WINTER"
+        },
+        {
+          "id": 202,
+          "name": "LOGOS_WE_NORTH_SPRING"
+        },
+        {
+          "id": 42,
+          "name": "LOGOS_THEY_EAST_SPRING"
+        },
+        {
+          "id": 186,
+          "name": "LOGOS_ME_SOUTH_SPRING"
+        }
+      ]
+    },
+    "4": {
+      "size": 1,
+      "archetypes": [
+        {
+          "id": 8,
+          "name": "THYMOS_THEY_NORTH_SPRING"
+        }
+      ]
+    }
+  }
+}

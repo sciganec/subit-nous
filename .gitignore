@@ -152,3 +152,15 @@ config.local.py
 Thumbs.db
 ehthumbs.db
 Desktop.ini
+
+# Classifier data and models
+classifier_data.json
+subit_model/
+subit_classifier/
+logs/
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# Other
+*.pyc

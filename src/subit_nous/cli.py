@@ -424,6 +424,108 @@ def ui(
     subprocess.run([sys.executable, "-m", "streamlit", "run", str(ui_file), "--server.port", str(port)])
 
 
+@app.command()
+def classify(
+    text: str = typer.Argument(..., help="Text to classify"),
+    probs: bool = typer.Option(False, "--probs", "-p", help="Show probabilities"),
+):
+    """Classify text using neural classifier (if available)."""
+    from .classifier import SubitClassifier
+    
+    classifier = SubitClassifier()
+    result = classifier.classify(text, return_probs=probs)
+    
+    console.print(f"\n[bold]Text:[/] {text}")
+    console.print(f"[bold]SUBIT:[/] {result['subit']} ({result['bits']})")
+    console.print(f"[bold]Archetype:[/] {result['archetype']}")
+    
+    if result.get('mode'):
+        console.print(f"[bold]Mode:[/] {result['mode']}")
+        console.print(f"[bold]Who:[/] {result['who']}")
+
+
+@app.command()
+def clusters(
+    input: str = typer.Argument(..., help="Path to graph.json file"),
+    max_distance: int = typer.Option(2, "--max-dist", "-d", help="Max Hamming distance for clustering"),
+    output: str = typer.Option("./clusters.json", "--output", "-o", help="Output JSON file"),
+):
+    """Group archetypes into semantic clusters based on Hamming distance."""
+    import json
+    import networkx as nx
+    from .graph import get_semantic_clusters
+    from .core import subit_to_name
+    
+    # Load graph
+    with open(input, 'r') as f:
+        data = json.load(f)
+    G = nx.node_link_graph(data)
+    
+    # Get clusters
+    clusters = get_semantic_clusters(G, max_distance)
+    
+    # Prepare output
+    result = {
+        "max_distance": max_distance,
+        "total_clusters": len(clusters),
+        "total_nodes": len(G.nodes),
+        "clusters": {}
+    }
+    
+    for cluster_id, nodes_list in clusters.items():
+        result["clusters"][cluster_id] = {
+            "size": len(nodes_list),
+            "archetypes": [
+                {"id": node, "name": subit_to_name(node)}
+                for node in nodes_list
+            ]
+        }
+    
+    # Save to file
+    with open(output, 'w') as f:
+        json.dump(result, f, indent=2)
+    
+    console.print(f"[bold blue]📊 Found {len(clusters)} semantic clusters[/]")
+    console.print(f"[green]✅ Saved to {output}[/]")
+
+@app.command()
+def torus(
+    input: str = typer.Argument(..., help="Path to graph.json file"),
+    output: str = typer.Option("./torus.html", "--output", "-o", help="Output HTML file"),
+):
+    """Generate Clifford torus 3D visualization of all archetypes."""
+    import json
+    import networkx as nx
+    from .graph import visualize_clifford_torus
+    
+    # Load graph
+    with open(input, 'r') as f:
+        data = json.load(f)
+    G = nx.node_link_graph(data)
+    
+    console.print(f"[bold blue]🌀 Generating Clifford torus from {len(G.nodes)} archetypes...[/]")
+    visualize_clifford_torus(G, output)
+    console.print(f"[green]✅ Torus saved to {output}[/]")
+
+
+@app.command()
+def umap(
+    input: str = typer.Argument(..., help="Path to graph.json file"),
+    output: str = typer.Option("./umap.html", "--output", "-o", help="Output HTML file"),
+):
+    """Generate UMAP 3D projection of archetypes (preserves semantic topology)."""
+    import json
+    import networkx as nx
+    from .graph import visualize_umap
+    
+    with open(input, 'r') as f:
+        data = json.load(f)
+    G = nx.node_link_graph(data)
+    
+    console.print(f"[bold blue]🗺️ Generating UMAP projection from {len(G.nodes)} archetypes...[/]")
+    visualize_umap(G, output)
+    console.print(f"[green]✅ UMAP saved to {output}[/]")
+
 def main():
     app()
 

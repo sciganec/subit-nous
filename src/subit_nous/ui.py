@@ -90,6 +90,28 @@ def get_target_subit(mode: str, who: str) -> Subit:
         mode=mode_map.get(mode, 2)
     )
 
+def interpolate_archetypes(bits_a: int, bits_b: int, alpha: float) -> tuple:
+    """
+    Linearly interpolate between two archetypes in ℝ⁸ space.
+    Returns (interpolated_bits, soft_vector)
+    """
+    import numpy as np
+    
+    # Convert bits to soft vector (-1, +1)
+    soft_a = np.array([1 if (bits_a >> (7-i)) & 1 else -1 for i in range(8)])
+    soft_b = np.array([1 if (bits_b >> (7-i)) & 1 else -1 for i in range(8)])
+    
+    # Interpolate
+    soft_current = (1 - alpha) * soft_a + alpha * soft_b
+    
+    # Convert back to bits (threshold at 0)
+    bits_current = 0
+    for i, val in enumerate(soft_current):
+        if val > 0:
+            bits_current |= (1 << (7-i))
+    
+    return bits_current, soft_current
+
 # ----------------------------------------------------------------------
 # Dark theme toggle in sidebar
 # ----------------------------------------------------------------------
@@ -217,10 +239,11 @@ st.markdown('<div class="main-header">SUBIT‑NOUS</div>', unsafe_allow_html=Tru
 st.markdown("*Formal algebraic coordinate system for meaning*")
 
 # ----------------------------------------------------------------------
-# Tabs (6 tabs)
+# Tabs (9 tabs)
 # ----------------------------------------------------------------------
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-    "🔍 Analyze", "🤖 Agents", "🔎 Search", "📊 Profile", "🎮 Control", "🧠 Classify"
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([
+    "🔍 Analyze", "🤖 Agents", "🔎 Search", "📊 Profile", "🎮 Control",
+    "🧠 Classify", "🧩 Clusters", "🌀 Torus", "🗺️ UMAP", "🎚️ Interpolation"
 ])
 
 # ============================================================
@@ -577,6 +600,227 @@ with tab6:
                 st.info("Make sure the model is trained. Run: `python scripts/train_classifier.py`")
         elif classify_btn and not classify_text_input:
             st.warning("Please enter some text")
+
+# ============================================================
+# TAB 7: Clusters
+# ============================================================
+with tab7:
+    st.subheader("Semantic Clusters")
+    st.caption("Archetypes grouped by Hamming distance (bits differ ≤ 2)")
+    
+    # Load graph.json if exists
+    graph_path = Path("./nous_output/graph.json")
+    if not graph_path.exists():
+        st.warning("No graph found. Run 'nous analyze demo --output nous_output' first.")
+    else:
+        import json
+        import networkx as nx
+        from subit_nous.graph import get_semantic_clusters
+        from subit_nous.core import subit_to_name
+        
+        with open(graph_path, 'r') as f:
+            data = json.load(f)
+        G = nx.node_link_graph(data)
+        
+        max_dist = st.slider("Max Hamming distance", 1, 4, 2, 
+                              help="Lower = tighter clusters, Higher = larger groups")
+        
+        clusters = get_semantic_clusters(G, max_dist)
+        
+        st.info(f"Found **{len(clusters)} clusters** from {len(G.nodes)} archetypes")
+        
+        # Show clusters
+        for cluster_id, nodes_list in clusters.items():
+            with st.expander(f"Cluster {cluster_id} ({len(nodes_list)} archetypes)"):
+                names = [subit_to_name(n) for n in nodes_list]
+                # Show first 20 names
+                display = ", ".join(names[:20])
+                if len(names) > 20:
+                    display += f" ... and {len(names)-20} more"
+                st.write(display)
+
+# ============================================================
+# TAB 8: Torus
+# ============================================================
+with tab8:
+    st.subheader("Clifford Torus Visualization")
+    st.caption("All 256 archetypes projected onto a 4D torus → 3D space")
+    
+    graph_path = Path("./nous_output/graph.json")
+    torus_path = Path("./nous_output/torus.html")
+    
+    if not graph_path.exists():
+        st.warning("No graph found. Run 'nous analyze demo --output nous_output' first.")
+    else:
+        # Check if torus already exists
+        if torus_path.exists():
+            st.success("✅ Torus visualization already generated")
+            with open(torus_path, 'r', encoding='utf-8') as f:
+                html_content = f.read()
+            st.components.v1.html(html_content, height=850, scrolling=True)
+        else:
+            st.info("Generate Clifford torus visualization")
+            if st.button("🌀 Generate Torus", type="primary", use_container_width=True):
+                import subprocess
+                with st.spinner("Generating Clifford torus..."):
+                    result = subprocess.run(
+                        ["nous", "torus", str(graph_path), "--output", str(torus_path)],
+                        capture_output=True, text=True
+                    )
+                    if result.returncode == 0:
+                        st.success("✅ Torus generated!")
+                        with open(torus_path, 'r', encoding='utf-8') as f:
+                            html_content = f.read()
+                        st.components.v1.html(html_content, height=850, scrolling=True)
+                    else:
+                        st.error(f"Error: {result.stderr}")
+
+# ============================================================
+# TAB 9: UMAP
+# ============================================================
+with tab9:
+    st.subheader("UMAP Projection")
+    st.caption("Semantic topology – archetypes clustered by meaning")
+    
+    graph_path = Path("./nous_output/graph.json")
+    umap_path = Path("./nous_output/umap.html")
+    
+    if not graph_path.exists():
+        st.warning("No graph found. Run 'nous analyze demo --output nous_output' first.")
+    else:
+        if umap_path.exists():
+            with open(umap_path, 'r', encoding='utf-8') as f:
+                html_content = f.read()
+            st.components.v1.html(html_content, height=850, scrolling=True)
+        else:
+            st.info("Generate UMAP projection")
+            if st.button("🗺️ Generate UMAP", type="primary", use_container_width=True):
+                import subprocess
+                with st.spinner("Generating UMAP projection..."):
+                    result = subprocess.run(
+                        ["nous", "umap", str(graph_path), "--output", str(umap_path)],
+                        capture_output=True, text=True
+                    )
+                    if result.returncode == 0:
+                        st.success("✅ UMAP generated!")
+                        with open(umap_path, 'r', encoding='utf-8') as f:
+                            html_content = f.read()
+                        st.components.v1.html(html_content, height=850, scrolling=True)
+                    else:
+                        st.error(f"Error: {result.stderr}")
+
+# ============================================================
+# TAB 10: Interpolation
+# ============================================================
+with tab10:
+    st.subheader("Vector Interpolation – Semantic Sliders")
+    st.caption("Smoothly transition between two archetypes in ℝ⁸ space")
+    
+    col1, col2 = st.columns(2)
+    
+    # Predefined archetypes for selection
+    archetype_options = {
+        "MICRO (170)": 0b10101010,
+        "MACRO (255)": 0b11111111,
+        "MESO (85)": 0b01010101,
+        "META (0)": 0b00000000,
+        "LOGOS_ME_EAST_SPRING (170)": 0b10101010,
+        "ETHOS_WE_SOUTH_SUMMER (255)": 0b11111111,
+        "PATHOS_YOU_WEST_AUTUMN (85)": 0b01010101,
+        "THYMOS_THEY_NORTH_WINTER (0)": 0b00000000,
+    }
+    
+    with col1:
+        st.markdown("### 🟢 Start Archetype")
+        start_name = st.selectbox(
+            "Select start",
+            list(archetype_options.keys()),
+            index=0,
+            key="start_archetype"
+        )
+        start_bits = archetype_options[start_name]
+        start_display = subit_to_name(start_bits)
+        st.caption(f"**{start_display}** (`{start_bits:08b}` = {start_bits})")
+    
+    with col2:
+        st.markdown("### 🔴 End Archetype")
+        end_name = st.selectbox(
+            "Select end",
+            list(archetype_options.keys()),
+            index=1,
+            key="end_archetype"
+        )
+        end_bits = archetype_options[end_name]
+        end_display = subit_to_name(end_bits)
+        st.caption(f"**{end_display}** (`{end_bits:08b}` = {end_bits})")
+    
+    st.markdown("---")
+    
+    # Interpolation slider
+    st.markdown("### 🎚️ Transition Slider")
+    alpha = st.slider(
+        "Move from Start → End",
+        0.0, 1.0, 0.5,
+        step=0.01,
+        help="0 = Start archetype, 1 = End archetype"
+    )
+    
+    # Calculate interpolated archetype
+    current_bits, current_soft = interpolate_archetypes(start_bits, end_bits, alpha)
+    current_name = subit_to_name(current_bits)
+    
+    # Display current state
+    st.markdown("---")
+    st.markdown("### 📍 Current Position")
+    
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Alpha", f"{alpha:.2f}")
+    with col2:
+        st.metric("Archetype ID", current_bits)
+    with col3:
+        st.metric("Name", current_name[:20] + "..." if len(current_name) > 20 else current_name)
+    
+    # Binary representation
+    st.markdown("#### Binary representation")
+    bits_str = f"{current_bits:08b}"
+    cols = st.columns(8)
+    for i, (col, bit) in enumerate(zip(cols, bits_str)):
+        color = "#2ecc71" if bit == "1" else "#95a5a6"
+        col.markdown(f"<div style='text-align: center; font-size: 24px; font-weight: bold; color: {color};'>{bit}</div>", unsafe_allow_html=True)
+        col.caption(f"b{7-i}")
+    st.caption("b7-b6: WHO | b5-b4: WHERE | b3-b2: WHEN | b1-b0: MODE")
+    
+    # Radar chart of current soft vector
+    st.markdown("#### Soft Vector Profile")
+    fig = soft_to_radar_chart(current_soft)
+    st.plotly_chart(fig, use_container_width=True)
+    
+    # Generate text with interpolated style (requires Ollama)
+    st.markdown("---")
+    st.markdown("### 🎮 Generate Text with This Style")
+    st.caption("Uses Ollama to generate text matching the interpolated archetype")
+    
+    interp_prompt = st.text_area(
+        "Input prompt:",
+        value="Write a short sentence about artificial intelligence",
+        height=68,
+        key="interp_prompt"
+    )
+    
+    if st.button("🎮 Generate", type="primary", use_container_width=True, key="interp_generate"):
+        if interp_prompt:
+            with st.spinner(f"Generating with archetype {current_name}..."):
+                try:
+                    from subit_nous.control import apply_subit
+                    target = Subit(current_bits)
+                    response = apply_subit(interp_prompt, target, model)
+                    st.markdown("**Response:**")
+                    st.info(response)
+                except Exception as e:
+                    st.error(f"Error: {e}\n\nMake sure Ollama is running: `ollama serve`")
+        else:
+            st.warning("Please enter a prompt")
 
 # ----------------------------------------------------------------------
 # Footer
