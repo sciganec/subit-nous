@@ -42,7 +42,7 @@ def soft_to_radar_chart(soft_vec: np.ndarray) -> go.Figure:
 # Сторінка конфігурації
 st.set_page_config(
     page_title="SUBIT-NOUS",
-    page_icon="🧠",
+    page_icon="[AI]",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -70,12 +70,12 @@ st.markdown("""
 
 # Sidebar
 with st.sidebar:
-    st.title("🧠 SUBIT‑NOUS")
+    st.title("SUBIT‑NOUS")
     st.markdown("### v3.0")
     st.markdown("---")
     
     # Налаштування моделі
-    st.subheader("⚙️ Settings")
+    st.subheader("Settings")
     model = st.selectbox(
         "Ollama Model",
         ["llama3.2:3b", "llama3.2:8b", "mistral:7b", "gemma3:12b"],
@@ -84,9 +84,9 @@ with st.sidebar:
     
     # Індекс для пошуку
     st.markdown("---")
-    st.subheader("📁 Search Index")
+    st.subheader("Search Index")
     index_path = st.text_input("Folder to index", value="./demo")
-    if st.button("📇 Index Folder", type="secondary"):
+    if st.button("Index Folder", type="secondary"):
         with st.spinner(f"Indexing {index_path}..."):
             count = index_folder(index_path)
             st.success(f"Indexed {count} documents")
@@ -97,7 +97,7 @@ st.markdown('<div class="main-header">SUBIT‑NOUS</div>', unsafe_allow_html=Tru
 st.markdown("*Formal algebraic coordinate system for meaning*")
 
 # Таби
-tab1, tab2, tab3, tab4 = st.tabs(["🔍 Analyze", "🤖 Agents", "🔎 Search", "📊 Profile"])
+tab1, tab2, tab3, tab4 = st.tabs(["Analyze", "Agents", "Search", "Profile"])
 
 # ============================================================
 # TAB 1: Analyze
@@ -108,7 +108,7 @@ with tab1:
     
     col1, col2 = st.columns([1, 4])
     with col1:
-        analyze_btn = st.button("🔍 Analyze", type="primary", use_container_width=True)
+        analyze_btn = st.button("Analyze", type="primary", use_container_width=True)
     
     if analyze_btn and text_input:
         with st.spinner("Analyzing..."):
@@ -153,7 +153,7 @@ with tab2:
         help="auto – detect mode automatically"
     )
     
-    if st.button("🤖 Generate", type="primary", use_container_width=True):
+    if st.button("Generate", type="primary", use_container_width=True):
         if agent_text:
             with st.spinner(f"Running {agent_mode.upper()} agent..."):
                 if agent_mode == "auto":
@@ -185,7 +185,7 @@ with tab3:
     top_k = st.slider("Number of results", 1, 20, 10)
     alpha = st.slider("Semantic weight (alpha)", 0.0, 1.0, 0.5, help="Higher = more semantic similarity")
     
-    if st.button("🔎 Search", type="primary", use_container_width=True):
+    if st.button("Search", type="primary", use_container_width=True):
         if search_query:
             with st.spinner("Searching..."):
                 results = search(
@@ -218,7 +218,7 @@ with tab4:
     
     profile_text = st.text_area("Enter text to visualize:", height=100, placeholder="Any text...", key="profile_text")
     
-    if st.button("📊 Generate Radar Chart", type="primary", use_container_width=True):
+    if st.button("Generate Radar Chart", type="primary", use_container_width=True):
         if profile_text:
             soft = text_to_soft(profile_text)
             fig = soft_to_radar_chart(soft)

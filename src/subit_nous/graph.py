@@ -20,7 +20,7 @@ def build_graph(folder_path: str, chunk_size: int = 1000) -> nx.DiGraph:
         files = [f for f in path.rglob('*') if f.is_file() and f.suffix.lower() in text_extensions]
     
     if not files:
-        print("⚠️ Текстові файли не знайдено.")
+        print("[WARN] Текстові файли не знайдено.")
         return graph
     
     for filepath in files:
@@ -52,13 +52,13 @@ def build_graph(folder_path: str, chunk_size: int = 1000) -> nx.DiGraph:
         else:
             graph.add_edge(from_subit, to_subit, weight=1)
     
-    print(f"📊 Graph built: {len(graph.nodes)} archetypes, {graph.number_of_edges()} transitions")
+    print(f"[GRAPH] Graph built: {len(graph.nodes)} archetypes, {graph.number_of_edges()} transitions")
     return graph
 
 def visualize_4d(graph: nx.Graph, output_file: str = "graph.html"):
     """Створює 3D-візуалізацію графа."""
     if not graph.nodes:
-        print("⚠️ Немає вузлів для візуалізації.")
+        print("[WARN] Немає вузлів для візуалізації.")
         return
     
     nodes = list(graph.nodes)
@@ -99,4 +99,4 @@ def visualize_4d(graph: nx.Graph, output_file: str = "graph.html"):
         )
     )
     fig.write_html(output_file)
-    print(f"✅ Visualization: {output_file}")
+    print(f"[OK] Visualization: {output_file}")

@@ -9,7 +9,7 @@ from .core import subit_to_name, archetype_color, MODE_FOR_ARCHETYPE
 def export_report(graph: nx.Graph, output_path: str = "report.md") -> None:
     """Generate a markdown report with ASCII profile of transversal modes."""
     if not graph.nodes:
-        print("⚠️ No nodes to report.")
+        print("[WARN] No nodes to report.")
         return
 
     nodes = list(graph.nodes)
@@ -84,7 +84,7 @@ def export_report(graph: nx.Graph, output_path: str = "report.md") -> None:
     with open(output_path, 'w', encoding='utf-8') as f:
         f.write("\n".join(lines))
 
-    print(f"✅ Report saved to {output_path}")
+    print(f"[OK] Report saved to {output_path}")
 
 def export_obsidian(graph: nx.Graph, output_dir: str = "obsidian") -> None:
     """Export graph as Obsidian vault with one note per archetype."""
@@ -114,4 +114,4 @@ def export_obsidian(graph: nx.Graph, output_dir: str = "obsidian") -> None:
                 weight = graph[node][neighbor].get('weight', 1)
                 f.write(f"- [[{nb_name}]] (weight {weight})\n")
 
-    print(f"✅ Obsidian vault exported to {output_dir}")
+    print(f"[OK] Obsidian vault exported to {output_dir}")

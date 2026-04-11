@@ -16,70 +16,16 @@ from .core import text_to_soft, soft_to_hard, subit_to_name, cosine_similarity, 
 # Version
 __version__ = "3.1.0"
 
-app = typer.Typer(help="🧠 SUBIT-NOUS: Knowledge from chaos (MICRO/MACRO/MESO/META)")
+app = typer.Typer(help="SUBIT-NOUS: Knowledge from chaos (MICRO/MACRO/MESO/META)")
 console = Console()
+
 
 @app.command()
 def version():
     """Show version."""
     console.print(f"SUBIT-NOUS version {__version__}")
 
-@app.command()
-def ui(
-    port: int = typer.Option(8501, "--port", "-p", help="Port for web UI"),
-):
-    """Launch Streamlit web UI."""
-    import subprocess
-    import sys
-    from pathlib import Path
-    
-    ui_file = Path(__file__).parent / "ui.py"
-    if not ui_file.exists():
-        console.print("[red]UI file not found. Please reinstall the package.[/red]")
-        raise typer.Exit(1)
-    
-    console.print(f"[bold blue]🌐 Starting SUBIT‑NOUS UI at http://localhost:{port}[/]")
-    subprocess.run([sys.executable, "-m", "streamlit", "run", str(ui_file), "--server.port", str(port)])
-@app.command()
-def agent(
-    text: str = typer.Argument(..., help="Input text to process"),
-    mode: str = typer.Option("auto", "--mode", "-m", help="STATE, VALUE, FORM, FORCE, or auto"),
-    model: str = typer.Option("llama3.2:3b", "--model", help="Ollama model name"),
-    instructions: Optional[str] = typer.Option(None, "--instructions", "-i", help="Custom system prompt"),
-):
-    """Run an agent for a given mode (or auto-detect)."""
-    from .agent import run_agent, classify_and_run
-    
-    if mode.upper() == "AUTO":
-        console.print("[bold blue]🤖 Auto-detecting mode...[/]")
-        result = classify_and_run(text, model)
-        console.print(f"[dim]Detected mode: {result['original_mode']} (archetype: {result['original_archetype']})[/dim]")
-        console.print("\n[bold green]Agent response:[/]")
-        console.print(result['agent_response'])
-    else:
-        console.print(f"[bold blue]🤖 Running {mode.upper()} agent...[/]")
-        response = run_agent(text, mode.upper(), model, instructions)
-        console.print("\n[bold green]Response:[/]")
-        console.print(response)
 
-@app.command()
-def pipeline(
-    text: str = typer.Argument(..., help="Input text"),
-    modes: str = typer.Option(..., "--modes", "-m", help="Comma-separated modes: STATE,VALUE,FORM,FORCE"),
-    model: str = typer.Option("llama3.2:3b", "--model", help="Ollama model name"),
-):
-    """Run a multi-agent pipeline (sequential processing)."""
-    from .agent import run_pipeline
-    
-    mode_list = [m.strip().upper() for m in modes.split(",")]
-    console.print(f"[bold blue]🔗 Running pipeline: {' → '.join(mode_list)}[/]")
-    
-    results = run_pipeline(text, mode_list, model)
-    
-    for i, r in enumerate(results, 1):
-        console.print(f"\n[bold cyan]Step {i}: {r['mode']}[/]")
-        console.print(f"[dim]Input: {r['input']}[/dim]")
-        console.print(f"[green]Output: {r['output'][:200]}...[/green]" if len(r['output']) > 200 else f"[green]Output: {r['output']}[/green]")
 @app.command()
 def index(
     path: str = typer.Argument(..., help="Folder to index"),
@@ -87,9 +33,10 @@ def index(
 ):
     """Index a folder for fast search."""
     from .search import index_folder
-    console.print(f"[bold blue]📇 Indexing[/] {path} ...")
+    console.print(f"[bold blue]Indexing[/] {path} ...")
     count = index_folder(path, chunk_size)
-    console.print(f"[green]✅ Indexed {count} documents.[/green]")
+    console.print(f"[green]Indexed {count} documents.[/green]")
+
 
 @app.command()
 def search(
@@ -113,9 +60,8 @@ def search(
         who_name = {2:"ME",3:"WE",1:"YOU",0:"THEY"}.get(r["who"], "?")
         console.print(f"{i}. [bold]{r['path']}[/bold]")
         console.print(f"   Score: {r['score']:.3f} (sim={r['similarity']:.3f}) | {mode_name} / {who_name}")
-# ----------------------------------------------------------------------
-# analyze
-# ----------------------------------------------------------------------
+
+
 @app.command()
 def analyze(
     path: str = typer.Argument(..., help="Folder to analyze"),
@@ -125,34 +71,30 @@ def analyze(
     api: bool = typer.Option(False, "--api", help="Start API server after analysis"),
 ):
     """Build knowledge graph from any folder."""
-    console.print(f"[bold blue]🧠 NOUS[/] analyzing {path} ...")
-    with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=console) as progress:
-        task = progress.add_task("Building graph...", total=None)
-        graph = build_graph(path, chunk_size=chunk_size)
-        progress.update(task, completed=True)
-    console.print(f"[bold]📊 Graph built:[/] {len(graph.nodes)} archetypes, {graph.number_of_edges()} transitions")
+    console.print(f"[bold blue]NOUS[/] analyzing {path} ...")
+    console.print("Building graph...")
+    graph = build_graph(path, chunk_size=chunk_size)
+    console.print(f"[bold]Graph built:[/] {len(graph.nodes)} archetypes, {graph.number_of_edges()} transitions")
     out_path = Path(output)
     out_path.mkdir(parents=True, exist_ok=True)
     visualize_4d(graph, str(out_path / "graph.html"))
     export_report(graph, str(out_path / "report.md"))
     export_obsidian(graph, str(out_path / "obsidian"))
-    console.print(f"[green]✅ Done![/] Open {out_path / 'graph.html'}")
+    console.print(f"[green]Done![/] Open {out_path / 'graph.html'}")
     if watch:
-        console.print("[yellow]👀 Watch mode not yet implemented in CLI, use `nous watch` separately.[/]")
+        console.print("[yellow]Watch mode not yet implemented in CLI, use `nous watch` separately.[/]")
     if api:
-        console.print("[yellow]🚀 Starting API server...[/]")
+        console.print("[yellow]Starting API server...[/]")
         serve(port=8000)
 
-# ----------------------------------------------------------------------
-# watch
-# ----------------------------------------------------------------------
+
 @app.command()
 def watch(
     path: str = typer.Argument(..., help="Folder to watch"),
     output: str = typer.Option("./nous_output", "--output", "-o", help="Output directory"),
     chunk_size: int = typer.Option(1000, "--chunk-size", "-c", help="Text chunk size"),
 ):
-    """Watch folder for changes and auto‑update the knowledge graph."""
+    """Watch folder for changes and auto-update the knowledge graph."""
     from watchdog.observers import Observer
     from watchdog.events import FileSystemEventHandler
     import time
@@ -166,8 +108,8 @@ def watch(
                 visualize_4d(graph, str(out_path / "graph.html"))
                 export_report(graph, str(out_path / "report.md"))
                 export_obsidian(graph, str(out_path / "obsidian"))
-                console.print("[green]✅ Graph updated.[/green]")
-    console.print(f"[bold blue]👀 Watching[/] {path} (press Ctrl+C to stop)")
+                console.print("[green]Graph updated.[/green]")
+    console.print(f"[bold blue]Watching[/] {path} (press Ctrl+C to stop)")
     event_handler = Handler()
     observer = Observer()
     observer.schedule(event_handler, path, recursive=True)
@@ -179,9 +121,7 @@ def watch(
         observer.stop()
     observer.join()
 
-# ----------------------------------------------------------------------
-# serve
-# ----------------------------------------------------------------------
+
 @app.command()
 def serve(
     port: int = typer.Option(8000, "--port", "-p", help="Port for API server"),
@@ -189,18 +129,16 @@ def serve(
     """Start REST API + WebSocket server."""
     import uvicorn
     from subit_nous.api import app as api_app
-    console.print(f"[bold blue]🚀 Starting SUBIT‑NOUS API on http://0.0.0.0:{port}[/]")
+    console.print(f"[bold blue]Starting SUBIT-NOUS API on http://0.0.0.0:{port}[/]")
     uvicorn.run(api_app, host="0.0.0.0", port=port)
 
-# ----------------------------------------------------------------------
-# hooks
-# ----------------------------------------------------------------------
+
 @app.command()
 def hooks(
     action: str = typer.Argument("install", help="install or uninstall"),
     repo_path: str = typer.Option(".", "--repo", "-r", help="Git repository path"),
 ):
-    """Install or uninstall Git hooks for auto‑analysis on commit."""
+    """Install or uninstall Git hooks for auto-analysis on commit."""
     hooks_dir = Path(repo_path) / ".git" / "hooks"
     if action == "install":
         hooks_dir.mkdir(parents=True, exist_ok=True)
@@ -209,20 +147,18 @@ def hooks(
 nous analyze {repo_path} --output {repo_path}/nous_output
 """)
         post_commit.chmod(0o755)
-        console.print(f"[green]✅ Git post-commit hook installed in {hooks_dir}[/]")
+        console.print(f"[green]Git post-commit hook installed in {hooks_dir}[/]")
     elif action == "uninstall":
         hook = hooks_dir / "post-commit"
         if hook.exists():
             hook.unlink()
-            console.print(f"[yellow]🗑️ Removed post-commit hook[/]")
+            console.print(f"[yellow]Removed post-commit hook[/]")
         else:
             console.print("[yellow]No post-commit hook found.[/]")
     else:
         console.print(f"[red]Unknown action: {action}. Use 'install' or 'uninstall'.[/]")
 
-# ----------------------------------------------------------------------
-# export
-# ----------------------------------------------------------------------
+
 @app.command()
 def export(
     graph_file: str = typer.Argument(..., help="Path to JSON graph file (from /graph/export)"),
@@ -239,7 +175,7 @@ def export(
     elif format == "json":
         with open(output, 'w') as f:
             json.dump(data, f, indent=2)
-        console.print(f"✅ JSON exported to {output}")
+        console.print(f"JSON exported to {output}")
     elif format == "cypher":
         cypher_lines = []
         for node in G.nodes:
@@ -248,13 +184,11 @@ def export(
         for u, v in G.edges:
             cypher_lines.append(f"MATCH (a {{id: {u}}}), (b {{id: {v}}}) CREATE (a)-[:TRANSITIONS]->(b)")
         Path(output).write_text("\n".join(cypher_lines))
-        console.print(f"✅ Cypher exported to {output}")
+        console.print(f"Cypher exported to {output}")
     else:
         console.print(f"[red]Unknown format: {format}[/]")
 
-# ----------------------------------------------------------------------
-# soft (розширена версія)
-# ----------------------------------------------------------------------
+
 @app.command()
 def soft(
     path: Optional[str] = typer.Argument(None, help="Folder to analyze (for average profile)"),
@@ -314,9 +248,50 @@ def soft(
         console.print("[red]Please provide a folder path or use --sim1/--sim2 or --interp1/--interp2 or --radar.[/red]")
         raise typer.Exit(1)
 
-# ----------------------------------------------------------------------
-# control (Ollama)
-# ----------------------------------------------------------------------
+    # Analyze folder
+    all_soft = []
+    text_extensions = {'.txt', '.md', '.py', '.json', '.yaml', '.yml', '.rst', '.csv', '.html', '.css', '.js'}
+    files = list(Path(path).rglob("*"))
+    for f in files:
+        if f.is_file() and f.suffix.lower() in text_extensions:
+            try:
+                text = f.read_text(encoding='utf-8', errors='ignore')
+                if text.strip():
+                    soft_vec = text_to_soft(text, chunk_size)
+                    all_soft.append(soft_vec)
+            except Exception as e:
+                console.print(f"[red]Error reading {f}: {e}[/red]")
+
+    if not all_soft:
+        console.print("[red]No text files found.[/red]")
+        return
+
+    avg_soft = np.mean(all_soft, axis=0)
+    console.print("\n[bold cyan]Continuous SUBIT Profile (average soft vector)[/bold cyan]")
+    console.print("Bits (b7..b0):")
+    for i, val in enumerate(avg_soft):
+        bar_len = int(abs(val) * 20)
+        bar = "█" * bar_len + "░" * (20 - bar_len)
+        sign = "+" if val >= 0 else "-"
+        console.print(f"  bit{i}: {sign} {bar} {val:5.2f}")
+
+    hard = soft_to_hard(avg_soft)
+    console.print(f"\n[bold]Closest hard archetype:[/bold] {subit_to_name(hard)} (ID {hard})")
+
+    out_path = Path(output)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    data = {
+        "average_soft": avg_soft.tolist(),
+        "closest_archetype": hard,
+        "closest_archetype_name": subit_to_name(hard),
+        "num_chunks": len(all_soft),
+        "all_soft_vectors": [v.tolist() for v in all_soft]
+    }
+    with open(out_path, 'w', encoding='utf-8') as f:
+        json.dump(data, f, indent=2)
+    console.print(f"\n[green]Soft vectors saved to {out_path}[/green]")
+
+
 @app.command()
 def control(
     text: str = typer.Argument(..., help="Input text to transform"),
@@ -331,7 +306,7 @@ def control(
         console.print(f"[red]Invalid mode: {mode}. Use STATE, VALUE, FORM, FORCE.[/red]")
         raise typer.Exit(1)
     try:
-        console.print(f"[bold blue]🎮 Controlling text to mode {mode.upper()}...[/]")
+        console.print(f"[bold blue]Controlling text to mode {mode.upper()}...[/]")
         result = apply_control(text, target, model=model)
         console.print("\n[bold green]Result:[/]")
         console.print(result)
@@ -339,11 +314,96 @@ def control(
         console.print(f"[red]Error: {e}[/red]")
         console.print("Make sure Ollama server is running and the model is downloaded.")
 
-# ----------------------------------------------------------------------
-# main
-# ----------------------------------------------------------------------
+
+@app.command()
+def agent(
+    text: str = typer.Argument(..., help="Input text to process"),
+    mode: str = typer.Option("auto", "--mode", "-m", help="STATE, VALUE, FORM, FORCE, or auto"),
+    model: str = typer.Option("llama3.2:3b", "--model", help="Ollama model name"),
+    instructions: Optional[str] = typer.Option(None, "--instructions", "-i", help="Custom system prompt"),
+):
+    """Run an agent for a given mode (or auto-detect)."""
+    from .agent import run_agent, classify_and_run
+    
+    if mode.upper() == "AUTO":
+        console.print("[bold blue]Auto-detecting mode...[/]")
+        result = classify_and_run(text, model)
+        console.print(f"[dim]Detected mode: {result['original_mode']} (archetype: {result['original_archetype']})[/dim]")
+        console.print("\n[bold green]Agent response:[/]")
+        console.print(result['agent_response'])
+    else:
+        console.print(f"[bold blue]Running {mode.upper()} agent...[/]")
+        response = run_agent(text, mode.upper(), model, instructions)
+        console.print("\n[bold green]Response:[/]")
+        console.print(response)
+
+
+@app.command()
+def pipeline(
+    text: str = typer.Argument(..., help="Input text"),
+    modes: str = typer.Option(..., "--modes", "-m", help="Comma-separated modes: STATE,VALUE,FORM,FORCE"),
+    model: str = typer.Option("llama3.2:3b", "--model", help="Ollama model name"),
+):
+    """Run a multi-agent pipeline (sequential processing)."""
+    from .agent import run_pipeline
+    
+    mode_list = [m.strip().upper() for m in modes.split(",")]
+    console.print(f"[bold blue]Running pipeline: {' -> '.join(mode_list)}[/]")
+    
+    results = run_pipeline(text, mode_list, model)
+    
+    for i, r in enumerate(results, 1):
+        console.print(f"\n[bold cyan]Step {i}: {r['mode']}[/]")
+        console.print(f"[dim]Input: {r['input']}[/dim]")
+        console.print(f"[green]Output: {r['output'][:200]}...[/green]" if len(r['output']) > 200 else f"[green]Output: {r['output']}[/green]")
+
+
+@app.command()
+def apply(
+    prompt: str = typer.Argument(..., help="Input prompt"),
+    mode: str = typer.Option("auto", "--mode", "-m", help="STATE, VALUE, FORM, FORCE, or auto"),
+    who: str = typer.Option("auto", "--who", "-w", help="ME, WE, YOU, THEY, or auto"),
+    model: str = typer.Option("llama3.2:3b", "--model", help="Ollama model"),
+):
+    """Apply SUBIT control to LLM generation."""
+    from .subit_algebra import Subit
+    
+    if mode == "auto" and who == "auto":
+        s = Subit.from_text(prompt)
+    elif mode != "auto" and who != "auto":
+        mode_map = {"STATE": 2, "VALUE": 3, "FORM": 1, "FORCE": 0}
+        who_map = {"ME": 2, "WE": 3, "YOU": 1, "THEY": 0}
+        s = Subit.from_coords(who_map[who], 2, 2, mode_map[mode])
+    else:
+        console.print("[red]Either specify both --mode and --who, or use 'auto' for both.[/red]")
+        raise typer.Exit(1)
+    
+    console.print(f"[bold blue]Applying SUBIT: {s.to_human()}[/]")
+    response = s.apply_to_prompt(prompt, model)
+    console.print(f"\n[bold green]Response:[/]\n{response}")
+
+
+@app.command()
+def ui(
+    port: int = typer.Option(8501, "--port", "-p", help="Port for web UI"),
+):
+    """Launch Streamlit web UI."""
+    import subprocess
+    import sys
+    from pathlib import Path
+    
+    ui_file = Path(__file__).parent / "ui.py"
+    if not ui_file.exists():
+        console.print("[red]UI file not found. Please reinstall the package.[/red]")
+        raise typer.Exit(1)
+    
+    console.print(f"[bold blue]Starting SUBIT-NOUS UI at http://localhost:{port}[/]")
+    subprocess.run([sys.executable, "-m", "streamlit", "run", str(ui_file), "--server.port", str(port)])
+
+
 def main():
     app()
+
 
 if __name__ == "__main__":
     main()

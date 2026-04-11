@@ -91,6 +91,12 @@ MARKERS = {
     }
 }
 
+from .subit_algebra import Subit
+
+def text_to_subit_object(text: str, chunk_size: int = 1000) -> Subit:
+    """Return Subit object from text."""
+    return Subit(text_to_subit(text, chunk_size))
+
 def soft_to_radar_chart(soft_vec: np.ndarray, output_file: str = None) -> None:
     """Створює радарну діаграму для 8-бітного soft-вектора."""
     import plotly.graph_objects as go
@@ -267,4 +273,4 @@ def soft_to_radar_chart(soft_vec: np.ndarray, output_file: str = "radar.html") -
         title="Soft SUBIT Profile (Radar Chart)"
     )
     fig.write_html(output_file)
-    print(f"✅ Radar chart saved to {output_file}")
+    print(f"[OK] Radar chart saved to {output_file}")
