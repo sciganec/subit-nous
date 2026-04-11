@@ -27,6 +27,54 @@ def version():
 
 
 @app.command()
+def apply(
+    text: str = typer.Argument(..., help="Input text to transform"),
+    mode: str = typer.Option("auto", "--mode", "-m", help="STATE, VALUE, FORM, FORCE, or auto"),
+    who: str = typer.Option("auto", "--who", "-w", help="ME, WE, YOU, THEY, or auto"),
+    model: str = typer.Option("llama3.2:3b", "--model", help="Ollama model name"),
+):
+    """Apply SUBIT control to transform text into target semantic style."""
+    from .control import apply_subit
+    from .core import text_to_subit
+    from .subit_algebra import Subit
+
+    # Mode mapping
+    mode_map = {"STATE": 2, "VALUE": 3, "FORM": 1, "FORCE": 0}
+    who_map = {"ME": 2, "WE": 3, "YOU": 1, "THEY": 0}
+
+    # Handle different combinations
+    if mode == "auto" and who == "auto":
+        # Auto-detect from text
+        bits = text_to_subit(text)
+        target = Subit(bits)
+        detected_mode = {2: "STATE", 3: "VALUE", 1: "FORM", 0: "FORCE"}.get(target.project("MODE"), "STATE")
+        detected_who = {2: "ME", 3: "WE", 1: "YOU", 0: "THEY"}.get(target.project("WHO"), "ME")
+        console.print(f"[dim]Auto-detected: mode={detected_mode}, who={detected_who}[/dim]")
+    elif mode != "auto" and who == "auto":
+        # Only mode specified, use default WHO (ME)
+        mode_bits = mode_map.get(mode.upper(), 2)
+        target = Subit.from_coords(who=2, where=2, when=2, mode=mode_bits)
+        console.print(f"[dim]Using mode={mode}, who=ME (default)[/dim]")
+    elif who != "auto" and mode == "auto":
+        # Only who specified, use default MODE (STATE)
+        who_bits = who_map.get(who.upper(), 2)
+        target = Subit.from_coords(who=who_bits, where=2, when=2, mode=2)
+        console.print(f"[dim]Using who={who}, mode=STATE (default)[/dim]")
+    else:
+        # Both specified
+        mode_bits = mode_map.get(mode.upper(), 2)
+        who_bits = who_map.get(who.upper(), 2)
+        target = Subit.from_coords(who=who_bits, where=2, when=2, mode=mode_bits)
+
+    console.print(f"[bold blue]🎮 Applying SUBIT control...[/]")
+    console.print(f"[dim]Target: {target.to_human()} (bits={target.bits:08b})[/dim]")
+
+    result = apply_subit(text, target, model)
+    console.print("\n[bold green]Result:[/]")
+    console.print(result)
+
+
+@app.command()
 def index(
     path: str = typer.Argument(..., help="Folder to index"),
     chunk_size: int = typer.Option(1000, "--chunk-size", "-c", help="Text chunk size"),
@@ -356,31 +404,6 @@ def pipeline(
         console.print(f"\n[bold cyan]Step {i}: {r['mode']}[/]")
         console.print(f"[dim]Input: {r['input']}[/dim]")
         console.print(f"[green]Output: {r['output'][:200]}...[/green]" if len(r['output']) > 200 else f"[green]Output: {r['output']}[/green]")
-
-
-@app.command()
-def apply(
-    prompt: str = typer.Argument(..., help="Input prompt"),
-    mode: str = typer.Option("auto", "--mode", "-m", help="STATE, VALUE, FORM, FORCE, or auto"),
-    who: str = typer.Option("auto", "--who", "-w", help="ME, WE, YOU, THEY, or auto"),
-    model: str = typer.Option("llama3.2:3b", "--model", help="Ollama model"),
-):
-    """Apply SUBIT control to LLM generation."""
-    from .subit_algebra import Subit
-    
-    if mode == "auto" and who == "auto":
-        s = Subit.from_text(prompt)
-    elif mode != "auto" and who != "auto":
-        mode_map = {"STATE": 2, "VALUE": 3, "FORM": 1, "FORCE": 0}
-        who_map = {"ME": 2, "WE": 3, "YOU": 1, "THEY": 0}
-        s = Subit.from_coords(who_map[who], 2, 2, mode_map[mode])
-    else:
-        console.print("[red]Either specify both --mode and --who, or use 'auto' for both.[/red]")
-        raise typer.Exit(1)
-    
-    console.print(f"[bold blue]Applying SUBIT: {s.to_human()}[/]")
-    response = s.apply_to_prompt(prompt, model)
-    console.print(f"\n[bold green]Response:[/]\n{response}")
 
 
 @app.command()

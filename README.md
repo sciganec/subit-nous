@@ -2,7 +2,6 @@
 
 ## Formal algebraic coordinate system for meaning
 
-[![PyPI version](https://badge.fury.io/py/subit-nous.svg)](https://badge.fury.io/py/subit-nous)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
