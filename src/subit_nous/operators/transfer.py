@@ -35,10 +35,9 @@ class TransferOperator(SubitOperator):
     
     def apply(self, subit: int) -> int:
         """Blend current SUBIT with target."""
-        # Simple blending: for each axis, choose with probability alpha
         import random
         result = 0
-        for axis, shift in [("WHO",6), ("WHERE",4), ("WHEN",2), ("MODE",0)]:
+        for axis, shift in [("WHO", 6), ("WHERE", 4), ("WHEN", 2), ("MODE", 0)]:
             a_val = (subit >> shift) & 0b11
             b_val = (self.target_subit >> shift) & 0b11
             if random.random() < self.alpha:
@@ -49,16 +48,24 @@ class TransferOperator(SubitOperator):
     
     def apply_to_text(self, text: str) -> str:
         """Transfer text to target style."""
+        from ..controlled_rewrite import controlled_rewrite, semantic_delta
+    
         current_subit = text_to_subit(text)
         target_subit = self.apply(current_subit)
-        
+    
+        print(f"[DEBUG] Transfer: current={current_subit:08b}, target={target_subit:08b}")
+        print(f"[DEBUG] Delta axes: {semantic_delta(current_subit, target_subit)}")
+    
         # Check if we need to change anything
         delta = semantic_delta(current_subit, target_subit)
         if not delta:
+            print("[DEBUG] No changes needed")
             return text
-        
+    
         # Use controlled rewrite
-        return controlled_rewrite(text, target_subit)
+        result = controlled_rewrite(text, target_subit)
+        print(f"[DEBUG] Transfer result: {result}")
+        return result
     
     def __repr__(self) -> str:
         return f"Transfer(target={self.target_subit:08b}, alpha={self.alpha})"

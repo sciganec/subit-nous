@@ -849,6 +849,153 @@ def query(
         console.print(f"[dim]... and {len(results) - 20} more results[/dim]")
 
 
+@app.command()
+def mask(
+    input: str = typer.Argument(..., help="Input file or text"),
+    condition: str = typer.Option(..., "--condition", "-c", help="Condition like 'WHO=WE' or 'MODE=THYMOS'"),
+    transform: str = typer.Option(..., "--transform", "-t", help="Transformation like 'WHO=ME' or 'MODE=LOGOS'"),
+    output: str = typer.Option("masked.txt", "--output", "-o", help="Output file"),
+):
+    """Apply mask operator to text (local editing)."""
+    from .operators import MaskOperator
+    from pathlib import Path
+    
+    # Read input
+    input_path = Path(input)
+    if input_path.exists():
+        text = input_path.read_text(encoding='utf-8', errors='ignore')
+    else:
+        text = input
+    
+    console.print(f"[dim]Input: {text[:100]}...[/dim]")
+    console.print(f"[dim]Condition: {condition}, Transform: {transform}[/dim]")
+    
+    # Apply mask
+    mask_op = MaskOperator(condition, transform)
+    result = mask_op.apply_to_text(text)
+    
+    # Save output
+    Path(output).write_text(result, encoding='utf-8')
+    console.print(f"[green]✅ Mask applied. Output saved to {output}[/]")
+    console.print(f"[dim]Result: {result[:100]}...[/dim]")
+
+
+@app.command()
+def transfer(
+    content: str = typer.Argument(..., help="Content file or text"),
+    style: Optional[str] = typer.Option(None, "--style", "-s", help="Style file or text"),
+    target: Optional[int] = typer.Option(None, "--target", "-t", help="Target SUBIT value (0-255)"),
+    alpha: float = typer.Option(0.7, "--alpha", "-a", help="Blending factor (0-1)"),
+    output: str = typer.Option("transferred.txt", "--output", "-o", help="Output file"),
+):
+    """Apply transfer operator to text (global style transfer)."""
+    from .operators import TransferOperator
+    from .core import text_to_subit
+    from pathlib import Path
+    
+    # Read content
+    content_path = Path(content)
+    if content_path.exists():
+        content_text = content_path.read_text(encoding='utf-8', errors='ignore')
+    else:
+        content_text = content
+    
+    console.print(f"[dim]Content: {content_text[:100]}...[/dim]")
+    
+    # Create operator
+    if style:
+        style_path = Path(style)
+        if style_path.exists():
+            style_text = style_path.read_text(encoding='utf-8', errors='ignore')
+        else:
+            style_text = style
+        console.print(f"[dim]Style: {style_text[:100]}...[/dim]")
+        
+        # Direct test of text_to_subit
+        content_subit = text_to_subit(content_text)
+        style_subit = text_to_subit(style_text)
+        console.print(f"[dim]Content SUBIT: {content_subit:08b} ({content_subit})[/dim]")
+        console.print(f"[dim]Style SUBIT: {style_subit:08b} ({style_subit})[/dim]")
+        
+        transfer_op = TransferOperator.from_style(style_text, alpha)
+        console.print(f"[dim]Target SUBIT: {transfer_op.target_subit:08b} ({transfer_op.target_subit})[/dim]")
+    elif target is not None:
+        console.print(f"[dim]Target SUBIT: {target} ({target:08b})[/dim]")
+        transfer_op = TransferOperator(target_subit=target, alpha=alpha)
+    else:
+        console.print("[red]Error: Provide either --style or --target[/red]")
+        raise typer.Exit(1)
+    
+    # Apply transfer
+    console.print("[dim]Applying transfer operator...[/dim]")
+    result = transfer_op.apply_to_text(content_text)
+    
+    # Save output
+    Path(output).write_text(result, encoding='utf-8')
+    console.print(f"[green]✅ Transfer applied. Output saved to {output}[/]")
+    console.print(f"[dim]Result: {result[:100]}...[/dim]")
+    
+    # Verify change
+    if result.strip() == content_text.strip():
+        console.print("[yellow]⚠️ Warning: Result is identical to input. Transfer may not have worked.[/yellow]")
+
+
+@app.command()
+def evolve(
+    input: str = typer.Argument(..., help="Input file or text"),
+    from_mode: str = typer.Option(..., "--from", "-f", help="From mode: LOGOS, ETHOS, PATHOS, THYMOS (or STATE, VALUE, FORM, FORCE)"),
+    to_mode: str = typer.Option(..., "--to", "-t", help="To mode: LOGOS, ETHOS, PATHOS, THYMOS (or STATE, VALUE, FORM, FORCE)"),
+    steps: int = typer.Option(3, "--steps", "-s", help="Number of steps"),
+    output_dir: str = typer.Option("evolution", "--output", "-o", help="Output directory"),
+):
+    """Apply evolution operator to text (path animation)."""
+    from .operators import EvolutionOperator
+    from .core import text_to_subit
+    from pathlib import Path
+    
+    # Mode to SUBIT mapping (using Greek names)
+    mode_map = {
+        "LOGOS": 0b10, "STATE": 0b10,
+        "ETHOS": 0b11, "VALUE": 0b11,
+        "PATHOS": 0b01, "FORM": 0b01,
+        "THYMOS": 0b00, "FORCE": 0b00,
+    }
+    
+    from_bits = mode_map.get(from_mode.upper(), 0b10)
+    to_bits = mode_map.get(to_mode.upper(), 0b10)
+    
+    # Add default values for other axes (EAST, SPRING, LOGOS)
+    from_subit = (0b10 << 6) | (0b10 << 4) | (0b10 << 2) | from_bits
+    to_subit = (0b10 << 6) | (0b10 << 4) | (0b10 << 2) | to_bits
+    
+    # Read input
+    input_path = Path(input)
+    if input_path.exists():
+        text = input_path.read_text(encoding='utf-8', errors='ignore')
+    else:
+        text = input
+    
+    console.print(f"[dim]Input: {text[:100]}...[/dim]")
+    console.print(f"[dim]Evolving from {from_mode} ({from_subit:08b}) to {to_mode} ({to_subit:08b}) in {steps} steps[/dim]")
+    
+    # Create evolution operator
+    evolve_op = EvolutionOperator(from_subit, to_subit, steps)
+    
+    # Get evolution steps
+    results = evolve_op.evolve(text)
+    
+    # Save results
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+    
+    for r in results:
+        step_file = output_path / f"step_{r['step']}.txt"
+        step_file.write_text(r['text'], encoding='utf-8')
+        console.print(f"  Step {r['step']}: {r['text'][:60]}...")
+    
+    console.print(f"[green]✅ Evolution complete. {len(results)} steps saved to {output_dir}[/]")
+
+
 def main():
     app()
 

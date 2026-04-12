@@ -164,3 +164,32 @@ logs/
 
 # Other
 *.pyc
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+
+# Test outputs
+test_*_out/
+nous_output/
+test_output/
+test_perf/
+test_demo/
+evolution/
+my_wiki/
+
+# Large files
+subit_model/
+subit_classifier/
+classifier_data.json
+logs/
+
+# Temporary
+*.log
+soft_output.json
+masked.txt
+transferred.txt

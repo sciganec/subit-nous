@@ -27,52 +27,43 @@ def semantic_delta(a: int, b: int) -> List[str]:
 def rewrite_axis(text: str, axis: str, target_value: int, model: str = "llama3.2:3b") -> str:
     """
     Rewrite text to change only one axis.
-    
-    Args:
-        text: Input text
-        axis: Axis to change (WHO, WHERE, WHEN, MODE)
-        target_value: Target value (0-3)
-        model: Ollama model name
-    
-    Returns:
-        Rewritten text
     """
+    import ollama
+    
     # Value names for prompts
     value_names = {
-        "WHO": {2: "ME (first person, I)", 3: "WE (collective, us)", 
-                1: "YOU (second person, you)", 0: "THEY (third person, them)"},
-        "WHERE": {2: "EAST (future, progress)", 3: "SOUTH (growth, action)",
-                  1: "WEST (past, reflection)", 0: "NORTH (center, stability)"},
-        "WHEN": {2: "SPRING (beginning, birth)", 3: "SUMMER (peak, growth)",
-                 1: "AUTUMN (decline, reflection)", 0: "WINTER (end, stillness)"},
-        "MODE": {2: "LOGOS/STATE (logical, factual)", 3: "ETHOS/VALUE (ethical, communal)",
-                 1: "PATHOS/FORM (emotional, aesthetic)", 0: "THYMOS/FORCE (willful, strategic)"},
+        "WHO": {2: "ME (first person, I)", 3: "WE (collective, we)", 
+                1: "YOU (second person, you)", 0: "THEY (third person, they)"},
+        "MODE": {2: "LOGOS (logical, factual)", 3: "ETHOS (ethical, communal)",
+                 1: "PATHOS (emotional, aesthetic)", 0: "THYMOS (willful, strategic)"},
     }
     
     target_name = value_names.get(axis, {}).get(target_value, str(target_value))
     
-    # Build prompt
     prompts = {
-        "WHO": f"Change the perspective to {target_name}. Use appropriate pronouns. Keep the meaning and facts.",
-        "WHERE": f"Change the spatial/directional aspect to {target_name}. Keep the core message.",
-        "WHEN": f"Change the temporal aspect to {target_name}. Keep the core message.",
-        "MODE": f"Change the tone/style to {target_name}. Keep the facts and core meaning.",
+        "WHO": f"Change the perspective to {target_name}. Change pronouns (I/we/you/they) accordingly. Keep the core meaning. Output only the rewritten text.",
+        "MODE": f"Change the tone to {target_name}. Keep the facts and core meaning. Output only the rewritten text.",
     }
     
     prompt = prompts.get(axis, f"Change {axis} to {target_name}. Keep the meaning.")
     
-    # Use Ollama for rewrite
-    import ollama
-    response = ollama.chat(
-        model=model,
-        messages=[
-            {"role": "system", "content": f"You are a precise text editor. {prompt} Output only the rewritten text, nothing else."},
-            {"role": "user", "content": text}
-        ],
-        options={"temperature": 0.3}
-    )
+    print(f"[DEBUG] rewrite_axis: axis={axis}, target={target_name}")
     
-    return response['message']['content']
+    try:
+        response = ollama.chat(
+            model=model,
+            messages=[
+                {"role": "system", "content": prompt},
+                {"role": "user", "content": text}
+            ],
+            options={"temperature": 0.3}
+        )
+        result = response['message']['content']
+        print(f"[DEBUG] rewrite_axis result: {result}")
+        return result
+    except Exception as e:
+        print(f"[DEBUG] rewrite_axis error: {e}")
+        return text  # fallback
 
 
 def controlled_rewrite(text: str, target_subit: int, max_changes: int = 3, model: str = "llama3.2:3b") -> str:
