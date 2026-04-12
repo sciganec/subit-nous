@@ -725,6 +725,66 @@ def integrate(
         console.print("[dim]Supported: claude, cursor, gemini, all, uninstall[/dim]")
         raise typer.Exit(1)
 
+@app.command()
+def explain(
+    path: str = typer.Argument(..., help="File path or text to explain"),
+    graph_path: str = typer.Option("./nous_output/graph.json", "--graph", "-g", help="Path to graph.json file"),
+):
+    """Explain why a file or text was classified as a specific archetype."""
+    import json
+    import networkx as nx
+    from pathlib import Path
+    from .query import explain_node
+    from .core import text_to_subit, subit_to_name
+    
+    # Check if input is a file or text
+    input_path = Path(path)
+    if input_path.exists() and input_path.is_file():
+        # It's a file
+        try:
+            text = input_path.read_text(encoding='utf-8', errors='ignore')
+            console.print(f"[bold blue]🔍 Explaining file: {path}[/]\n")
+            
+            # Load graph if exists
+            G = None
+            if Path(graph_path).exists():
+                with open(graph_path, 'r') as f:
+                    data = json.load(f)
+                G = nx.node_link_graph(data)
+                # Try to find node for this file
+                # For now, just analyze text directly
+                result = explain_node(G, None, text)
+            else:
+                result = explain_node(None, None, text)
+            
+        except Exception as e:
+            console.print(f"[red]Error reading file: {e}[/red]")
+            raise typer.Exit(1)
+    else:
+        # It's a text string
+        console.print(f"[bold blue]🔍 Explaining text:[/] {path[:100]}...\n")
+        result = explain_node(None, None, path)
+    
+    # Display results
+    if "error" in result:
+        console.print(f"[red]{result['error']}[/red]")
+        return
+    
+    console.print(f"[bold]📊 Archetype:[/] {result['archetype']}")
+    console.print(f"[bold]🎯 SUBIT:[/] {result['node_id']} ({result['bits']})")
+    
+    if result.get('is_from_graph'):
+        console.print(f"[bold]📈 Frequency:[/] {result.get('frequency', 0)}")
+    else:
+        console.print(f"[bold]🔬 Confidence:[/] {result.get('confidence', 1.0):.2f}")
+        console.print(f"\n[bold cyan]📝 Key markers:[/]")
+        for dim, contrib in result.get('contributions', {}).items():
+            markers = contrib.get('matched_markers', [])
+            if markers:
+                console.print(f"  [dim]{dim}:[/] {', '.join(markers)}")
+    
+    console.print(f"\n[dim]💡 Use 'nous query' to explore connections from this archetype.[/dim]")
+
 
 def main():
     app()

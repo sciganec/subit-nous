@@ -1,6 +1,3 @@
-Ось **оновлений ROADMAP.md** для SUBIT‑NOUS, що відображає поточний стан v4.0.0 та плани на майбутнє.
-
-```markdown
 # 🧠 SUBIT‑NOUS Roadmap
 
 ## Current Version: v4.0.0 (2026-04-11)

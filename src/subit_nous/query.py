@@ -118,3 +118,54 @@ def format_path_result_with_metadata(graph: nx.Graph, path: List[int]) -> str:
             else:
                 result.append("   └─[ connection ]")
     return "\n".join(result)
+
+def explain_node(graph: nx.Graph, node_id: int, text: str = None) -> Dict[str, Any]:
+    """
+    Explain why a text or node was classified as a specific archetype.
+    Returns reasoning with contributing markers and confidence.
+    """
+    from .core import text_to_subit, subit_to_name, MARKERS, _detect_dimension
+    
+    if text:
+        # Analyze text directly
+        subit = text_to_subit(text)
+        name = subit_to_name(subit)
+        
+        # Get marker contributions for each dimension
+        contributions = {}
+        for dim in ['WHO', 'WHERE', 'WHEN', 'WHY']:
+            bits = _detect_dimension(text.lower(), MARKERS[dim], dim)
+            # Find which markers matched
+            matched = []
+            for marker_bits, words in MARKERS[dim].items():
+                if marker_bits == bits:
+                    for w in words:
+                        if w in text.lower():
+                            matched.append(w)
+            contributions[dim] = {
+                "bits": bits,
+                "matched_markers": matched[:5]  # Top 5 matches
+            }
+        
+        return {
+            "node_id": subit,
+            "archetype": name,
+            "bits": f"{subit:08b}",
+            "confidence": 1.0,
+            "contributions": contributions,
+            "is_from_graph": False
+        }
+    else:
+        # Analyze node from graph
+        if node_id not in graph.nodes:
+            return {"error": f"Node {node_id} not found in graph"}
+        
+        name = subit_to_name(node_id)
+        return {
+            "node_id": node_id,
+            "archetype": name,
+            "bits": f"{node_id:08b}",
+            "frequency": graph.nodes[node_id].get('count', 0),
+            "neighbors": list(graph.neighbors(node_id))[:10],
+            "is_from_graph": True
+        }
