@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""SUBIT-NOUS CLI: analyze, watch, serve, hooks, export, soft, control"""
+"""SUBIT-NOUS CLI: analyze, watch, serve, hooks, export, soft, control, query"""
 
 import typer
 from rich.console import Console
@@ -8,15 +8,20 @@ from pathlib import Path
 from typing import Optional, List
 import json
 import numpy as np
+import networkx as nx
 
 from .graph import build_graph, visualize_4d
 from .exports import export_report, export_obsidian
-from .core import text_to_soft, soft_to_hard, subit_to_name, cosine_similarity, interpolate_soft, soft_to_radar_chart
+from .core import text_to_soft, soft_to_hard, subit_to_name, cosine_similarity, interpolate_soft, text_to_subit
+from .agent import run_agent, classify_and_run
+from .search import search, index_folder
+from .subit_algebra import Subit
+from .query import find_path, find_all_paths, get_node_info, find_common_connections, format_path_result_with_metadata
 
 # Version
 __version__ = "4.0.0"
 
-app = typer.Typer(help="SUBIT-NOUS: Knowledge from chaos (MICRO/MACRO/MESO/META)")
+app = typer.Typer(help="🧠 SUBIT-NOUS: Knowledge from chaos (MICRO/MACRO/MESO/META)")
 console = Console()
 
 
@@ -141,24 +146,64 @@ def watch(
     path: str = typer.Argument(..., help="Folder to watch"),
     output: str = typer.Option("./nous_output", "--output", "-o", help="Output directory"),
     chunk_size: int = typer.Option(1000, "--chunk-size", "-c", help="Text chunk size"),
+    debounce_docs: int = typer.Option(2000, "--debounce", help="Debounce delay for docs in milliseconds"),
 ):
-    """Watch folder for changes and auto-update the knowledge graph."""
+    """Watch folder for changes and smartly update the knowledge graph."""
     from watchdog.observers import Observer
     from watchdog.events import FileSystemEventHandler
     import time
-    class Handler(FileSystemEventHandler):
+
+    # Класифікація файлів за типом
+    CODE_EXTENSIONS = {'.py', '.js', '.ts', '.jsx', '.tsx', '.go', '.rs', '.java', '.c', '.cpp', '.h'}
+    DOC_EXTENSIONS = {'.md', '.txt', '.rst', '.pdf', '.docx'}
+
+    class SmartHandler(FileSystemEventHandler):
+        def __init__(self):
+            self.last_triggered = 0
+            self.pending_update = False
+
         def on_modified(self, event):
-            if not event.is_directory:
-                console.print(f"[dim]Change detected: {event.src_path}[/dim]")
-                graph = build_graph(path, chunk_size=chunk_size)
-                out_path = Path(output)
-                out_path.mkdir(parents=True, exist_ok=True)
-                visualize_4d(graph, str(out_path / "graph.html"))
-                export_report(graph, str(out_path / "report.md"))
-                export_obsidian(graph, str(out_path / "obsidian"))
-                console.print("[green]Graph updated.[/green]")
-    console.print(f"[bold blue]Watching[/] {path} (press Ctrl+C to stop)")
-    event_handler = Handler()
+            if event.is_directory:
+                return
+
+            file_ext = Path(event.src_path).suffix.lower()
+            
+            # Якщо це кодовий файл - оновлюємо миттєво
+            if file_ext in CODE_EXTENSIONS:
+                console.print(f"[dim]Code change detected: {Path(event.src_path).name}[/dim]")
+                self._update_graph()
+            
+            # Якщо це документ - використовуємо затримку (debounce)
+            elif file_ext in DOC_EXTENSIONS:
+                current_time = time.time() * 1000  # milliseconds
+                if current_time - self.last_triggered > debounce_docs:
+                    console.print(f"[dim]Doc change detected: {Path(event.src_path).name}. Waiting {debounce_docs/1000}s for stable state...[/dim]")
+                
+                self.last_triggered = current_time
+                if not self.pending_update:
+                    self.pending_update = True
+                    # Запускаємо таймер для відкладеного оновлення
+                    import threading
+                    timer = threading.Timer(debounce_docs / 1000.0, self._delayed_update)
+                    timer.daemon = True
+                    timer.start()
+
+        def _delayed_update(self):
+            self.pending_update = False
+            self._update_graph()
+
+        def _update_graph(self):
+            graph = build_graph(path, chunk_size=chunk_size)
+            out_path = Path(output)
+            out_path.mkdir(parents=True, exist_ok=True)
+            visualize_4d(graph, str(out_path / "graph.html"))
+            export_report(graph, str(out_path / "report.md"))
+            export_obsidian(graph, str(out_path / "obsidian"))
+            console.print("[green]✅ Graph updated.[/green]")
+
+    console.print(f"[bold blue]👀 Smart watching[/] {path} (press Ctrl+C to stop)")
+    console.print("[dim]Code files update instantly. Docs wait for changes to settle.[/dim]")
+    event_handler = SmartHandler()
     observer = Observer()
     observer.schedule(event_handler, path, recursive=True)
     observer.start()
@@ -525,6 +570,161 @@ def umap(
     console.print(f"[bold blue]🗺️ Generating UMAP projection from {len(G.nodes)} archetypes...[/]")
     visualize_umap(G, output)
     console.print(f"[green]✅ UMAP saved to {output}[/]")
+
+# Додайте цю функцію до вашого `cli.py`
+@app.command()
+def query(
+    start: str = typer.Argument(..., help="Start archetype (ID, name, or text)"),
+    target: str = typer.Argument(..., help="Target archetype (ID, name, or text)"),
+    graph_path: str = typer.Option("./nous_output/graph.json", "--graph", "-g", help="Path to graph.json file"),
+    all_paths: bool = typer.Option(False, "--all", "-a", help="Find all paths (not just shortest)"),
+    max_depth: int = typer.Option(3, "--depth", "-d", help="Maximum depth for path finding"),
+    common: bool = typer.Option(False, "--common", "-c", help="Find common connections instead of path"),
+):
+    
+    # Load the graph
+    if not Path(graph_path).exists():
+        console.print(f"[red]Error: Graph file {graph_path} not found. Run 'nous analyze' first.[/red]")
+        raise typer.Exit(1)
+    
+    with open(graph_path, 'r') as f:
+        data = json.load(f)
+    G = nx.node_link_graph(data)
+    
+    # Resolve start and target nodes
+    def resolve_node(input_str: str) -> Optional[int]:
+        if input_str.isdigit():
+            node_id = int(input_str)
+            if node_id in G.nodes:
+                return node_id
+        else:
+            # Try to find by name
+            for node in G.nodes:
+                if subit_to_name(node).lower() == input_str.lower():
+                    return node
+            # Try as text
+            node_id = text_to_subit(input_str)
+            if node_id in G.nodes:
+                return node_id
+        return None
+    
+    start_node = resolve_node(start)
+    target_node = resolve_node(target)
+    
+    if start_node is None:
+        console.print(f"[red]Error: Could not resolve start '{start}' to an archetype in the graph.[/red]")
+        raise typer.Exit(1)
+    
+    if target_node is None:
+        console.print(f"[red]Error: Could not resolve target '{target}' to an archetype in the graph.[/red]")
+        raise typer.Exit(1)
+    
+    console.print(f"[bold blue]🔍 Querying graph:[/] {subit_to_name(start_node)} → {subit_to_name(target_node)}")
+    
+    if common:
+        common_nodes = find_common_connections(G, start_node, target_node)
+        if common_nodes:
+            console.print(f"\n[bold green]Common connections found:[/]")
+            for node in common_nodes:
+                console.print(f"  • {subit_to_name(node)} (ID: {node})")
+        else:
+            console.print("[yellow]No common connections found.[/yellow]")
+        return
+    
+    if all_paths:
+        paths = find_all_paths(G, start_node, target_node, max_depth)
+        if paths:
+            console.print(f"\n[bold green]Found {len(paths)} path(s) (max depth: {max_depth}):[/]\n")
+            for i, path in enumerate(paths, 1):
+                console.print(f"Path {i}:")
+                console.print(format_path_result_with_metadata(G, path))
+                console.print("")
+        else:
+            console.print(f"[yellow]No paths found between these archetypes within depth {max_depth}.[/yellow]")
+    else:
+        path = find_path(G, start_node, target_node)
+        if path:
+            console.print(f"\n[bold green]Shortest path found:[/]\n")
+            console.print(format_path_result_with_metadata(G, path))
+            console.print(f"\n[dim]Path length: {len(path)-1} steps[/dim]")
+        else:
+            console.print("[yellow]No path found between these archetypes.[/yellow]")
+
+@app.command()
+def wiki(
+    input: str = typer.Argument(..., help="Path to graph.json file or folder with graph.json"),
+    output: str = typer.Option("./wiki", "--output", "-o", help="Output directory for wiki"),
+):
+    """Generate Wikipedia-style markdown wiki from knowledge graph."""
+    import json
+    import networkx as nx
+    from .wiki import generate_wiki
+    
+    # Find graph.json
+    input_path = Path(input)
+    if input_path.is_dir():
+        graph_path = input_path / "graph.json"
+    else:
+        graph_path = input_path
+    
+    if not graph_path.exists():
+        console.print(f"[red]Error: {graph_path} not found[/red]")
+        raise typer.Exit(1)
+    
+    with open(graph_path, 'r') as f:
+        data = json.load(f)
+    G = nx.node_link_graph(data)
+    
+    console.print(f"[bold blue]📚 Generating wiki from graph with {len(G.nodes)} nodes...[/]")
+    generate_wiki(G, output)
+    console.print(f"[green]✅ Wiki exported to {output}[/]")
+    console.print(f"[dim]Open {output}/index.md to start browsing[/dim]")
+
+
+@app.command()
+def integrate(
+    platform: str = typer.Argument(..., help="Platform: claude, cursor, gemini, all, uninstall"),
+    output: str = typer.Option("./nous_output", "--output", "-o", help="Output directory with graph"),
+):
+    """Integrate with AI coding assistants (Claude Code, Cursor, Gemini CLI)."""
+    from .integrations import (
+        install_claude_integration,
+        install_cursor_integration,
+        install_gemini_integration,
+        install_all_integrations,
+        uninstall_claude_integration,
+        uninstall_cursor_integration,
+        uninstall_gemini_integration,
+    )
+    
+    if platform == "claude":
+        install_claude_integration(output)
+        console.print("[green]✅ Claude Code integration installed![/]")
+    
+    elif platform == "cursor":
+        install_cursor_integration(output)
+        console.print("[green]✅ Cursor integration installed![/]")
+    
+    elif platform == "gemini":
+        install_gemini_integration(output)
+        console.print("[green]✅ Gemini CLI integration installed![/]")
+    
+    elif platform == "all":
+        install_all_integrations(output)
+        console.print("[green]✅ All integrations installed![/]")
+    
+    elif platform == "uninstall":
+        console.print("[yellow]Uninstalling integrations...[/]")
+        uninstall_claude_integration()
+        uninstall_cursor_integration()
+        uninstall_gemini_integration()
+        console.print("[green]✅ All integrations uninstalled![/]")
+    
+    else:
+        console.print(f"[red]Unknown platform: {platform}[/]")
+        console.print("[dim]Supported: claude, cursor, gemini, all, uninstall[/dim]")
+        raise typer.Exit(1)
+
 
 def main():
     app()

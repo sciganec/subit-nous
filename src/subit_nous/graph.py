@@ -47,10 +47,28 @@ def build_graph(folder_path: str, chunk_size: int = 1000) -> nx.DiGraph:
     for i in range(len(file_archetypes) - 1):
         from_subit = file_archetypes[i][1]
         to_subit = file_archetypes[i+1][1]
+        from_path = file_archetypes[i][0]
+        to_path = file_archetypes[i+1][0]
+        
         if graph.has_edge(from_subit, to_subit):
+            # Оновлюємо існуюче ребро
             graph[from_subit][to_subit]['weight'] += 1
+            # Додаємо джерела, якщо їх ще немає
+            if 'sources' not in graph[from_subit][to_subit]:
+                graph[from_subit][to_subit]['sources'] = []
+            if from_path not in graph[from_subit][to_subit]['sources']:
+                graph[from_subit][to_subit]['sources'].append(from_path)
+            if to_path not in graph[from_subit][to_subit]['sources']:
+                graph[from_subit][to_subit]['sources'].append(to_path)
         else:
-            graph.add_edge(from_subit, to_subit, weight=1)
+            # Додаємо нове ребро з повними метаданими
+            graph.add_edge(
+                from_subit, to_subit,
+                weight=1,
+                type="EXTRACTED",
+                confidence=1.0,
+                sources=[from_path, to_path]
+            )
     
     print(f"[GRAPH] Graph built: {len(graph.nodes)} archetypes, {graph.number_of_edges()} transitions")
     return graph

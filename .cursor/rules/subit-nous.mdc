@@ -1,0 +1,21 @@
+---
+description: SUBIT-NOUS Knowledge Graph - use before searching files
+alwaysApply: true
+---
+
+# SUBIT-NOUS Knowledge Graph
+
+Before answering questions about this codebase:
+
+1. Read `nous_output/report.md` to understand:
+   - God nodes (most connected archetypes)
+   - Community structure
+   - Unexpected connections
+
+2. For specific questions, use:
+   ```bash
+   nous search "your query" --mode STATE --top 5
+   nous query "start" "target"
+   ```
+
+The knowledge graph is ~1500x more token-efficient than reading raw files.
