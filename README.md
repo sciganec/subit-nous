@@ -1,10 +1,11 @@
-# 🧠 SUBIT‑NOUS v3.1.0
+# 🧠 SUBIT‑NOUS v4.0.0
 
 ## Formal algebraic coordinate system for meaning
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Classifier Accuracy](https://img.shields.io/badge/accuracy-87.8%25-brightgreen)]()
 
 > **NOUS** (νοῦς) – the intellect that perceives archetypes.  
 > **SUBIT** – a 4‑dimensional algebraic space over (ℤ₂)⁸.
@@ -12,15 +13,22 @@
 SUBIT‑NOUS turns any folder or file into a **computable knowledge graph** of 256 archetypes.  
 No LLM required for the core – but you can **control LLM generation** locally via Ollama.
 
+**Neural classifier now available with 87.8% accuracy!** 🎯
+
 ---
 
-## ✨ What's New in v3.1.0
+## ✨ What's New in v4.0.0
 
-- **Single file analysis** – analyze individual files, not only folders
-- **Empty file handling** – empty files now default to MICRO mode
-- **Windows compatibility** – fixed Unicode/emoji issues in PowerShell
-- **Performance optimizations** – faster processing for 100+ files
-- **Bug fixes** – syntax errors in graph.py, encoding issues
+- **Neural Classifier** – fine-tuned DistilBERT (87.8% accuracy) for text → SUBIT prediction
+- **`nous classify`** – CLI command with confidence scores and probability distribution
+- **`nous query`** – find paths and connections between archetypes in the graph
+- **`nous wiki`** – generate Wikipedia-style markdown documentation
+- **`nous integrate`** – integrate with Claude Code, Cursor, and Gemini CLI
+- **Smart `--watch`** – instant updates for code, debounced for docs
+- **UMAP projection** – visualize semantic topology in 3D
+- **Vector Interpolation UI** – smooth transitions between archetypes
+- **Semantic clusters** – group archetypes by Hamming distance
+- **Clifford Torus** – 3D visualization of all 256 states
 
 ---
 
@@ -34,7 +42,19 @@ nous analyze my-file.txt --output ./knowledge
 
 ---
 
-## 📐 The SUBIT v3.0 Framework
+## 🧠 Classify text with neural AI (87.8% accuracy)
+
+```bash
+nous classify "I think logically about the east in spring"
+# Output: MICRO mode (170) | STATE | ME | EAST | SPRING
+
+nous classify "We trust our community" --probs
+# Output with confidence scores and top predictions
+```
+
+---
+
+## 📐 The SUBIT v4.0 Framework
 
 Four axes, each with 4 values (2 bits):
 
@@ -56,7 +76,7 @@ Four axes, each with 4 values (2 bits):
 - **Similarity**: cosine, Euclidean
 - **Transformations**: axis flip, bit flip, axis permutation
 
-See SUBIT_v3.md for the full formal specification.
+See [SUBIT-v3.md](SUBIT_v3.md) for the full formal specification.
 
 ---
 
@@ -64,6 +84,7 @@ See SUBIT_v3.md for the full formal specification.
 
 | Feature | Description |
 |---------|-------------|
+| **Neural Classifier** | Fine-tuned DistilBERT – **87.8% accuracy** |
 | **Formal algebra** | XOR, distance, projection, replacement, flip, permute |
 | **Continuous SUBIT** | Soft vectors in ℝ⁸, cosine similarity, interpolation, radar charts |
 | **Local LLM control** | Rewrite text into STATE/VALUE/FORM/FORCE mode via Ollama (no API key) |
@@ -74,7 +95,10 @@ See SUBIT_v3.md for the full formal specification.
 | **Git hooks** | Auto‑sync on every commit |
 | **Hybrid search** | SQLite indexing + SUBIT filtering + cosine similarity |
 | **Agent system** | Four AI agents (STATE, VALUE, FORM, FORCE) |
-| **Web UI** | Streamlit-based graphical interface |
+| **Web UI** | Streamlit-based graphical interface with 10 tabs |
+| **UMAP projection** | 3D semantic topology visualization |
+| **Vector Interpolation** | Smooth transitions between archetypes |
+| **Wiki export** | Wikipedia-style markdown documentation |
 
 ---
 
@@ -84,7 +108,7 @@ See SUBIT_v3.md for the full formal specification.
 # Basic installation
 pip install subit-nous
 
-# With all extras (testing, local LLM)
+# With all extras (testing, local LLM, ML)
 pip install subit-nous[all]
 ```
 
@@ -101,46 +125,45 @@ nous analyze ./my-documents --output ./knowledge
 nous analyze my-file.txt --output ./knowledge
 ```
 
-### 2. Watch mode (auto-update on changes)
+### 2. Classify text (neural, 87.8% accuracy)
+
+```bash
+nous classify "I think logically about the east"
+nous classify "We trust our community" --probs
+```
+
+### 3. Query the knowledge graph
+
+```bash
+nous query "MICRO mode" "MACRO mode"
+# Output shows the path: MICRO → ETHOS_WE_EAST_SPRING → MACRO
+```
+
+### 4. Watch mode (smart updates)
 
 ```bash
 nous watch ./my-documents --output ./live_output
+# Code files update instantly, docs wait for changes to settle
 ```
 
-### 3. Start API server
+### 5. Generate wiki documentation
+
+```bash
+nous wiki nous_output/graph.json --output ./wiki
+# Creates Wikipedia-style markdown files
+```
+
+### 6. Integrate with AI assistants
+
+```bash
+nous integrate all --output nous_output
+# Creates CLAUDE.md, .cursor/rules, GEMINI.md
+```
+
+### 7. Start API server
 
 ```bash
 nous serve --port 8000
-```
-
-### 4. Install Git hooks (auto-analysis after commit)
-
-```bash
-nous hooks install .
-```
-
-### 5. Continuous SUBIT – soft vectors
-
-```bash
-nous soft ./my-folder --output profile.json
-nous soft --sim1 file1.txt --sim2 file2.txt
-nous soft --interp1 file1.txt --interp2 file2.txt --alpha 0.3
-nous soft --radar profile.json
-```
-
-### 6. Hybrid search
-
-```bash
-nous index ./my-documents
-nous search "climate change" --mode STATE --who WE --top 10
-```
-
-### 7. Agent system (requires Ollama)
-
-```bash
-nous agent "Explain AI" --mode STATE
-nous agent "The sunset is beautiful" --mode auto
-nous pipeline "Solar energy" --modes STATE,FORM,FORCE
 ```
 
 ### 8. Web UI
@@ -155,12 +178,35 @@ Then open `http://localhost:8501` in your browser.
 
 ## 📊 Example Output
 
-### Command
+### Classification
 ```bash
-nous analyze demo --output demo_out
+$ nous classify "I think logically about the east"
+📝 Text: I think logically about the east
+🎯 SUBIT: 170 (10101010)
+🏺 Archetype: MICRO mode
+🎭 Mode: STATE
+👤 Who: ME
+🧭 Where: EAST
+⏰ When: SPRING
 ```
 
-### Report (demo_out/report.md)
+### Query
+```bash
+$ nous query "MICRO mode" "MACRO mode"
+🔍 Querying graph: MICRO mode → MACRO mode
+
+Shortest path found:
+
+1. MICRO mode (ID: 170)
+   └─[ EXTRACTED (confidence: 1.0) weight: 1 ]
+2. ETHOS_WE_EAST_SPRING (ID: 235)
+   └─[ EXTRACTED (confidence: 1.0) weight: 1 ]
+3. MACRO mode (ID: 255)
+
+Path length: 2 steps
+```
+
+### Report (nous_output/report.md)
 ```markdown
 ## Transversal Mode Profile
 MICRO ████████████████████ 55.0%  (6 occurrences)
@@ -168,9 +214,6 @@ MACRO ██████░░░░░░░░░░░░░░ 18.0%  (2 occ
 MESO  ██████░░░░░░░░░░░░░░ 18.0%  (2 occurrences)
 META  ███░░░░░░░░░░░░░░░░░  9.0%  (1 occurrences)
 ```
-
-### Interactive Graph
-Open `demo_out/graph.html` in your browser – a 3D visualization with colored nodes.
 
 ---
 
@@ -180,8 +223,8 @@ Open `demo_out/graph.html` in your browser – a 3D visualization with colored n
 # Run all tests
 pytest tests/ -v
 
-# Run specific test
-pytest tests/test_core.py -v
+# Test classifier accuracy
+pytest tests/test_classifier.py -v
 ```
 
 ---
@@ -193,37 +236,35 @@ subit-nous/
 ├── src/subit_nous/
 │   ├── core.py          # Core SUBIT algebra
 │   ├── subit_algebra.py # Formal algebraic class
+│   ├── classifier.py    # Neural classifier (DistilBERT)
 │   ├── graph.py         # Knowledge graph builder
 │   ├── exports.py       # Report & Obsidian export
 │   ├── search.py        # Hybrid search (SQLite)
 │   ├── agent.py         # Agent system (Ollama)
-│   ├── ui.py            # Streamlit web interface
+│   ├── query.py         # Graph query (paths, connections)
+│   ├── wiki.py          # Wikipedia-style export
+│   ├── integrations.py  # AI assistant integrations
+│   ├── ui.py            # Streamlit web interface (10 tabs)
 │   ├── api.py           # FastAPI server
 │   └── cli.py           # CLI commands
 ├── tests/               # Unit tests
 ├── docs/                # Documentation
 ├── examples/            # Usage examples
+├── scripts/             # Training scripts
 └── demo/                # Demo data
 ```
+
+---
+
+## 📚 Documentation
+
+- [API Reference](docs/api.md) – REST API documentation
+- [Classifier Guide](docs/classifier.md) – Neural classifier training and usage
+- [Formal Specification](SUBIT_v3.md) – Complete SUBIT algebra specification
+- [CHANGELOG](CHANGELOG.md) – Version history
 
 ---
 
 ## 📄 License
 
 MIT
-
----
-
-## Key Updates for v3.1.0
-
-| Section | Change |
-|---------|--------|
-| Header | Version updated to 3.1.0 |
-| What's New | Added bullet points for v3.1.0 features |
-| Installation | Added `[all]` extras option |
-| Quick Start | Added single file analysis example |
-| Hybrid Search | New section for search commands |
-| Agent System | New section for agent commands |
-| Web UI | New section for UI commands |
-| Testing | Added pytest instructions |
-| Project Structure | Updated with new modules (search, agent, ui) |
