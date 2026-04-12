@@ -4,4 +4,4 @@ from .exports import export_report, export_obsidian
 from .subit_algebra import Subit
 from .client import SubitClient, AnalysisResult, ClassificationResult, SearchResult
 
-__version__ = "4.0.0"
+__version__ = "4.1.0"

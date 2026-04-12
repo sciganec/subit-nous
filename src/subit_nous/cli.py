@@ -786,6 +786,69 @@ def explain(
     console.print(f"\n[dim]💡 Use 'nous query' to explore connections from this archetype.[/dim]")
 
 
+@app.command()
+def query(
+    query_str: str = typer.Argument(..., help="Full query string in quotes: 'text WHERE MODE=FORM'"),
+    source: str = typer.Option(".", "--source", "-s", help="Source file/folder/graph"),
+    ref: Optional[str] = typer.Option(None, "--ref", "-r", help="Reference text for DISTANCE"),
+):
+    """Execute SUBIT query against text, graph, or files.
+    
+    Examples:
+        nous query "text WHERE MODE=FORM" --source doc.txt
+        nous query "graph WHERE WHO=ME" --source graph.json
+        nous query "files WHERE MODE=FORCE" --source ./docs/
+    """
+    from .dsl import parse, Evaluator
+    from .core import text_to_subit
+    
+    console.print(f"[dim]Executing query: {query_str}[/dim]")
+    
+    # Parse query
+    try:
+        parsed = parse(query_str)
+    except Exception as e:
+        console.print(f"[red]Parse error: {e}[/red]")
+        console.print("[dim]Query format: 'text WHERE MODE=FORM' or 'graph WHERE WHO=ME'[/dim]")
+        raise typer.Exit(1)
+    
+    # Override source if provided
+    if source != ".":
+        parsed.source = source
+    
+    # Get reference subit if needed
+    ref_subit = None
+    if ref:
+        ref_subit = text_to_subit(ref)
+    
+    # Evaluate
+    evaluator = Evaluator(ref_subit=ref_subit)
+    try:
+        results = evaluator.evaluate(parsed)
+    except Exception as e:
+        console.print(f"[red]Evaluation error: {e}[/red]")
+        raise typer.Exit(1)
+    
+    # Display results
+    console.print(f"\n[bold cyan]📊 Query results:[/] {len(results)} matches\n")
+    
+    for i, r in enumerate(results[:20], 1):
+        if 'text' in r:
+            text_preview = r['text'][:70] + "..." if len(r['text']) > 70 else r['text']
+            console.print(f"{i}. [dim]{text_preview}[/dim]")
+            console.print(f"   → {r['archetype']} ({r['bits']})")
+        elif 'node_id' in r:
+            console.print(f"{i}. {r['archetype']} (ID: {r['node_id']})")
+            console.print(f"   → degree: {r['degree']}, count: {r['count']}")
+        elif 'file' in r:
+            console.print(f"{i}. {r['file']}")
+            console.print(f"   → {r['archetype']} ({r['bits']})")
+        console.print("")
+    
+    if len(results) > 20:
+        console.print(f"[dim]... and {len(results) - 20} more results[/dim]")
+
+
 def main():
     app()
 
