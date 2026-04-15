@@ -1,5 +1,34 @@
 # Changelog
 
+## [5.0.0] - 2026-04-15
+
+### Added
+- Interactive web demo (`subit-demo`) deployed to GitHub Pages
+- Production-ready SDK: stable API, full type hints, comprehensive test coverage
+- Benchmark suite for standardized archetype classification evaluation
+- Custom Axis Plugin System — user-defined axes for domain-specific analysis
+- Open interchange standard: JSON Schema for SUBIT format
+- `nous suggest` command — suggests optimal MODE/WHO for any given text
+- Configurable confidence thresholds for classification pipelines
+- Clustered Knowledge Domains — semantic neighborhoods via Hamming distance
+- Vector Interpolation UI — sliders for smooth transitions between archetypes
+- Browser extension (alpha) — analyze any web page for SUBIT profile
+- Cursor IDE integration via `.cursorrules`
+- Gemini/Codex AGENTS.md support
+
+### Changed
+- Version classifier upgraded from DistilBERT to RoBERTa (90%+ accuracy)
+- Dynamic Agent Switching — agents auto-change MODE based on context
+- Query Rewriting — LLM expands natural language into SUBIT filters
+- Manifold Analysis — full 3D Clifford Torus projection for all 256 states
+- Development Status upgraded to `5 - Production/Stable`
+
+### Fixed
+- Improved Windows Unicode handling across all CLI output paths
+- Force-directed graph layout for large graphs (500+ nodes)
+
+---
+
 ## [3.1.0] - 2026-04-10
 
 ### Added

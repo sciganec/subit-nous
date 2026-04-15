@@ -1,6 +1,6 @@
 # 🧠 SUBIT‑NOUS Roadmap
 
-## Current Version: v4.0.0 (2026-04-11)
+## Current Version: v5.0.0 (2026-04-15)
 
 ### ✅ Completed
 
@@ -101,10 +101,10 @@
 | v3.0.0 | Formal Algebra | ✅ Released | 100% |
 | v3.1.0 | Windows Compatibility | ✅ Released | 100% |
 | v4.0.0 | Neural Classifier + SDK | ✅ Released | 100% |
-| v4.1.0 | Intelligent Search | 🟡 In Progress | 0% |
-| v4.2.0 | Geometry & Visualization | ⏳ Planned | 0% |
-| v4.5.0 | Ecosystem | ⏳ Planned | 0% |
-| v5.0.0 | Scientific Maturity | 🔮 Future | 0% |
+| v4.1.0 | Intelligent Search | ✅ Released | 100% |
+| v4.2.0 | Geometry & Visualization | ✅ Released | 100% |
+| v4.5.0 | Ecosystem | ✅ Released | 100% |
+| v5.0.0 | Scientific Maturity | ✅ Released | 100% |
 
 ---
 
