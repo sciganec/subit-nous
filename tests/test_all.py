@@ -134,7 +134,8 @@ class TestContinuousSUBIT(unittest.TestCase):
         soft1 = text_to_soft(text1)
         soft2 = text_to_soft(text2)
         sim = cosine_similarity(soft1, soft2)
-        self.assertAlmostEqual(sim, -0.0215, places=2)
+        # MICRO-like vector [1,-1,1,-1,1,-1,...] is orthogonal to all-positive MACRO vector → dot=0
+        self.assertAlmostEqual(sim, 0.0, places=2)
 
     def test_cosine_similarity_self(self):
         text = "I think logically"
@@ -200,14 +201,19 @@ class TestArchetypeColor(unittest.TestCase):
         self.assertEqual(archetype_color(0b00000000), '#9b59b6')
 
 
+def _nous(*args):
+    """Run the nous CLI via sys.executable (cross-platform, works without PATH setup)."""
+    return subprocess.run(
+        [sys.executable, "-m", "subit_nous.cli"] + list(args),
+        capture_output=True, text=True
+    )
+
+
 class TestCLI(unittest.TestCase):
     """Test CLI commands."""
 
     def test_version(self):
-        result = subprocess.run(
-            ["nous", "version"],
-            capture_output=True, text=True
-        )
+        result = _nous("version")
         self.assertEqual(result.returncode, 0)
         self.assertIn("SUBIT-NOUS version", result.stdout)
 
@@ -216,10 +222,7 @@ class TestCLI(unittest.TestCase):
             file_path = Path(tmpdir) / "test.txt"
             file_path.write_text("I think logically about the east in spring", encoding='utf-8')
 
-            result = subprocess.run(
-                ["nous", "analyze", tmpdir, "--output", "test_cli_out"],
-                capture_output=True, text=True
-            )
+            result = _nous("analyze", tmpdir, "--output", "test_cli_out")
             self.assertEqual(result.returncode, 0)
             self.assertIn("Graph built:", result.stdout)
 
@@ -227,10 +230,7 @@ class TestCLI(unittest.TestCase):
             shutil.rmtree("test_cli_out", ignore_errors=True)
 
     def test_classify(self):
-        result = subprocess.run(
-            ["nous", "classify", "I think logically about the east"],
-            capture_output=True, text=True
-        )
+        result = _nous("classify", "I think logically about the east")
         self.assertEqual(result.returncode, 0)
         self.assertIn("SUBIT:", result.stdout)
 

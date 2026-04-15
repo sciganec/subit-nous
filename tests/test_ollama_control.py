@@ -1,6 +1,7 @@
 # test_ollama_control.py
 import sys
 from subit_nous.llm_control_ollama import apply_control
+from subit_nous.core import MODE_VALUES
 
 # Тестові тексти для різних режимів
 test_text = "I think the server needs to be restarted because of a memory leak."

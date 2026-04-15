@@ -83,23 +83,6 @@ def get_edge_info(graph: nx.Graph, u: int, v: int) -> Dict[str, Any]:
         }
     return None
 
-# Оновіть функцію format_path_result, щоб включити цю інформацію
-def format_path_result_with_metadata(graph: nx.Graph, path: List[int]) -> str:
-    """Format a path with edge metadata."""
-    if not path:
-        return "No path found."
-    
-    result = []
-    for i, node in enumerate(path):
-        result.append(f"{i+1}. {subit_to_name(node)} (ID: {node})")
-        if i < len(path) - 1:
-            edge_info = get_edge_info(graph, node, path[i+1])
-            if edge_info:
-                result.append(f"   └─[ {edge_info['type']} (confidence: {edge_info['confidence']}) weight:{edge_info['weight']} ]")
-            else:
-                result.append("   └─[ connection ]")
-    return "\n".join(result)
-
 def format_path_result_with_metadata(graph: nx.Graph, path: List[int]) -> str:
     """Format a path with edge metadata (type, confidence, weight)."""
     if not path:

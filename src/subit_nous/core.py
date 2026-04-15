@@ -1,15 +1,11 @@
 """SUBIT-NOUS core: 4 dimensions, 4 transversal modes, 256 archetypes"""
 
-__version__ = "2.0.0"
+__version__ = "4.1.0"
 
+import re
 from enum import Enum
-from typing import Dict, Tuple, Optional
+from typing import Dict, List, Tuple, Optional
 import numpy as np
-
-from .subit_algebra import Subit
-
-def text_to_subit_object(text: str) -> Subit:
-    return Subit(text_to_subit(text))
 
 # ============ ВИМІРИ (ENUM) ============
 
@@ -93,37 +89,19 @@ MARKERS = {
 
 from .subit_algebra import Subit
 
+
 def text_to_subit_object(text: str, chunk_size: int = 1000) -> Subit:
     """Return Subit object from text."""
     return Subit(text_to_subit(text, chunk_size))
 
-def soft_to_radar_chart(soft_vec: np.ndarray, output_file: str = None) -> None:
-    """Створює радарну діаграму для 8-бітного soft-вектора."""
-    import plotly.graph_objects as go
-    categories = ['b7 (WHO1)', 'b6 (WHO2)', 'b5 (WHERE1)', 'b4 (WHERE2)',
-                  'b3 (WHEN1)', 'b2 (WHEN2)', 'b1 (MODE1)', 'b0 (MODE2)']
-    fig = go.Figure(data=go.Scatterpolar(
-        r=soft_vec.tolist(),
-        theta=categories,
-        fill='toself',
-        marker=dict(color='blue')
-    ))
-    fig.update_layout(
-        polar=dict(radialaxis=dict(visible=True, range=[-1, 1])),
-        showlegend=False,
-        title="Soft SUBIT Profile (Radar Chart)"
-    )
-    if output_file:
-        fig.write_html(output_file)
-    else:
-        fig.show()
+
 def _detect_dimension(text: str, dim_markers: Dict[int, list], dim_name: str = None) -> int:
     """Повертає 2-бітне значення для одного виміру з підвищеною вагою для займенників."""
     text_lower = text.lower()
     scores = {bits: 0 for bits in dim_markers}
     for bits, words in dim_markers.items():
         for w in words:
-            if w in text_lower:
+            if re.search(r'\b' + re.escape(w) + r'\b', text_lower):
                 weight = len(w)
                 # Підвищена вага для ключових займенників WHO
                 if dim_name == 'WHO':
@@ -139,15 +117,6 @@ def _detect_dimension(text: str, dim_markers: Dict[int, list], dim_name: str = N
     if max(scores.values()) == 0:
         return 0b10  # default MICRO
     return max(scores, key=scores.get)
-
-def text_to_subit(text: str, chunk_size: int = 1000) -> int:
-    """Текст → 8-бітний архетип (0-255)."""
-    sample = text[:chunk_size].lower()
-    who_bits = _detect_dimension(sample, MARKERS['WHO'], 'WHO')
-    where_bits = _detect_dimension(sample, MARKERS['WHERE'], 'WHERE')
-    when_bits = _detect_dimension(sample, MARKERS['WHEN'], 'WHEN')
-    why_bits = _detect_dimension(sample, MARKERS['WHY'], 'WHY')
-    return (who_bits << 6) | (where_bits << 4) | (when_bits << 2) | why_bits
 
 def subit_to_name(archetype: int) -> str:
     """Архетип → людинозрозуміла назва."""
@@ -177,35 +146,58 @@ def subit_to_coords(archetype: int) -> Tuple[int, int, int, int]:
         archetype & 0b11,
     )
 
-def _dimension_soft(text: str, dim_markers: Dict[int, list]) -> tuple:
+def _dimension_soft(text: str, dim_markers: Dict[int, List[str]], dim_name: str = None) -> Tuple[float, float]:
     """
-    Повертає два soft-біти для одного виміру (наприклад, WHO).
-    Значення в [-1,1]: позитивне → біт тяжіє до 1, негативне → до 0.
+    Повертає два soft-біти для одного виміру (значення в [-1,1]).
+    Покращена версія: ваги слів, негативні маркери, інтенсивність.
     """
     text_lower = text.lower()
     scores = {bits: 0 for bits in dim_markers}
+    
+    # Негативні маркери (зменшують вагу)
+    neg_words = {'not', 'no', 'never', 'none', 'nobody', 'nothing', 'neither', 'nor', 'without', 'cannot', "can't", "don't", "doesn't", "didn't", "won't"}
+    # Підсилювачі (збільшують вагу)
+    intensifiers = {'!', '!!', '!!!', 'very', 'extremely', 'absolutely', 'truly', 'really', 'so', 'too', 'utterly', 'completely', 'totally'}
+    
+    # Рахуємо кількість негативних маркерів та інтенсифікаторів у тексті
+    neg_count = sum(1 for w in neg_words if w in text_lower)
+    intens_count = sum(1 for w in intensifiers if w in text_lower)
+    
     for bits, words in dim_markers.items():
         for w in words:
-            if w in text_lower:
-                scores[bits] += len(w)
+            if re.search(r'\b' + re.escape(w) + r'\b', text_lower):
+                # Базова вага – довжина слова
+                weight = len(w)
+                # Спеціальні ваги для окремих вимірів
+                if dim_name == 'WHY':
+                    # Підсилення для сильних емоційних маркерів (PATHOS)
+                    if w in {'love', 'beauty', 'joy', 'passion', 'wonder', 'delight', 'sorrow', 'pain', 'suffering'}:
+                        weight *= 3
+                    # Підсилення для вольових маркерів (THYMOS)
+                    elif w in {'power', 'control', 'dominate', 'force', 'will', 'courage', 'fight', 'victory', 'win'}:
+                        weight *= 3
+                    # Підсилення для етичних маркерів (ETHOS)
+                    elif w in {'trust', 'community', 'justice', 'fair', 'honest', 'moral', 'virtue', 'harmony'}:
+                        weight *= 2
+                elif dim_name == 'WHO':
+                    # Підсилення для особистих займенників
+                    if w in {'i', 'me', 'my', 'mine', 'we', 'us', 'our', 'you', 'your'}:
+                        weight *= 4
+                # Якщо є негативні маркери, зменшуємо вагу
+                if neg_count > 0:
+                    weight /= (neg_count + 1)
+                # Якщо є підсилювачі, збільшуємо вагу
+                if intens_count > 0:
+                    weight *= (1 + intens_count * 0.5)
+                scores[bits] += weight
+    
     total = sum(scores.values())
     if total == 0:
         return (0.0, 0.0)
-    # Нормалізуємо до [0,1]
+    
     probs = {bits: scores[bits] / total for bits in dim_markers}
-    # Для двох бітів (b1, b2) де:
-    # bits = (b1<<1) | b2 ? Ні. У нас bits: 10,11,01,00.
-    # Нехай b1 – старший біт (2¹), b2 – молодший (2⁰).
-    # Тоді:
-    # 10: b1=1, b2=0
-    # 11: b1=1, b2=1
-    # 01: b1=0, b2=1
-    # 00: b1=0, b2=0
-    # Ймовірність b1=1 = P(10)+P(11)
-    # Ймовірність b2=1 = P(11)+P(01)
     p_b1 = probs.get(0b10, 0) + probs.get(0b11, 0)
     p_b2 = probs.get(0b11, 0) + probs.get(0b01, 0)
-    # Перетворюємо [0,1] → [-1,1] через 2*p-1
     soft_b1 = 2 * p_b1 - 1
     soft_b2 = 2 * p_b2 - 1
     return (soft_b1, soft_b2)
@@ -218,9 +210,47 @@ def text_to_soft(text: str, chunk_size: int = 1000) -> np.ndarray:
     sample = text[:chunk_size].lower()
     soft_parts = []
     for dim in ['WHO', 'WHERE', 'WHEN', 'WHY']:
-        b1, b2 = _dimension_soft(sample, MARKERS[dim])
+        b1, b2 = _dimension_soft(sample, MARKERS[dim], dim)
         soft_parts.extend([b1, b2])
     return np.array(soft_parts, dtype=np.float32)
+
+def _detect_dimension_hard(text: str, dim_markers: Dict[int, List[str]], dim_name: str = None) -> int:
+    """
+    Повертає 2-бітне значення для одного виміру (жорстка класифікація).
+    Використовує ті самі покращення: ваги, негативні маркери, інтенсивність.
+    """
+    text_lower = text.lower()
+    scores = {bits: 0 for bits in dim_markers}
+    
+    neg_words = {'not', 'no', 'never', 'none', 'nobody', 'nothing', 'neither', 'nor', 'without', 'cannot', "can't", "don't", "doesn't", "didn't", "won't"}
+    intensifiers = {'!', '!!', '!!!', 'very', 'extremely', 'absolutely', 'truly', 'really', 'so', 'too', 'utterly', 'completely', 'totally'}
+    
+    neg_count = sum(1 for w in neg_words if w in text_lower)
+    intens_count = sum(1 for w in intensifiers if w in text_lower)
+    
+    for bits, words in dim_markers.items():
+        for w in words:
+            if re.search(r'\b' + re.escape(w) + r'\b', text_lower):
+                weight = len(w)
+                if dim_name == 'WHY':
+                    if w in {'love', 'beauty', 'joy', 'passion', 'wonder', 'delight', 'sorrow', 'pain', 'suffering'}:
+                        weight *= 3
+                    elif w in {'power', 'control', 'dominate', 'force', 'will', 'courage', 'fight', 'victory', 'win'}:
+                        weight *= 3
+                    elif w in {'trust', 'community', 'justice', 'fair', 'honest', 'moral', 'virtue', 'harmony'}:
+                        weight *= 2
+                elif dim_name == 'WHO':
+                    if w in {'i', 'me', 'my', 'mine', 'we', 'us', 'our', 'you', 'your'}:
+                        weight *= 4
+                if neg_count > 0:
+                    weight /= (neg_count + 1)
+                if intens_count > 0:
+                    weight *= (1 + intens_count * 0.5)
+                scores[bits] += weight
+    
+    if max(scores.values()) == 0:
+        return 0b10  # default MICRO
+    return max(scores, key=scores.get)
 
 def soft_to_hard(soft_vec: np.ndarray) -> int:
     """
@@ -232,11 +262,17 @@ def soft_to_hard(soft_vec: np.ndarray) -> int:
             bits |= (1 << (7 - i))   # старший біт – індекс 0
     return bits
 
-from .subit_algebra import Subit
+def text_to_subit(text: str, chunk_size: int = 1000) -> int:
+    """
+    Текст → 8-бітний архетип (0-255) з покращеними вагами.
+    """
+    sample = text[:chunk_size].lower()
+    who_bits = _detect_dimension_hard(sample, MARKERS['WHO'], 'WHO')
+    where_bits = _detect_dimension_hard(sample, MARKERS['WHERE'], 'WHERE')
+    when_bits = _detect_dimension_hard(sample, MARKERS['WHEN'], 'WHEN')
+    why_bits = _detect_dimension_hard(sample, MARKERS['WHY'], 'WHY')
+    return (who_bits << 6) | (where_bits << 4) | (when_bits << 2) | why_bits
 
-def text_to_subit_object(text: str, chunk_size: int = 1000) -> Subit:
-    """Повертає об'єкт Subit для заданого тексту."""
-    return Subit(text_to_subit(text, chunk_size))
 
 def soft_to_subit_object(soft_vec: np.ndarray) -> Subit:
     """Перетворює soft-вектор у Subit (поріг 0)."""

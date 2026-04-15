@@ -12,10 +12,7 @@ import networkx as nx
 
 from .graph import build_graph, visualize_4d
 from .exports import export_report, export_obsidian
-from .core import text_to_soft, soft_to_hard, subit_to_name, cosine_similarity, interpolate_soft, text_to_subit
-from .agent import run_agent, classify_and_run
-from .search import search, index_folder
-from .subit_algebra import Subit
+from .core import text_to_soft, soft_to_hard, subit_to_name, cosine_similarity, interpolate_soft, text_to_subit, soft_to_radar_chart
 from .query import find_path, find_all_paths, get_node_info, find_common_connections, format_path_result_with_metadata
 
 # Version
@@ -471,22 +468,49 @@ def ui(
 
 @app.command()
 def classify(
-    text: str = typer.Argument(..., help="Text to classify"),
+    text: Optional[str] = typer.Argument(None, help="Text to classify (optional; if not given, reads from stdin)"),
     probs: bool = typer.Option(False, "--probs", "-p", help="Show probabilities"),
+    model_path: str = typer.Option("./subit_model", "--model", "-m", help="Path to trained model"),
 ):
-    """Classify text using neural classifier (if available)."""
+    """Classify text using trained SUBIT classifier. If TEXT is omitted, reads from stdin."""
+    import sys
     from .classifier import SubitClassifier
-    
-    classifier = SubitClassifier()
-    result = classifier.classify(text, return_probs=probs)
-    
-    console.print(f"\n[bold]Text:[/] {text}")
-    console.print(f"[bold]SUBIT:[/] {result['subit']} ({result['bits']})")
-    console.print(f"[bold]Archetype:[/] {result['archetype']}")
-    
-    if result.get('mode'):
-        console.print(f"[bold]Mode:[/] {result['mode']}")
-        console.print(f"[bold]Who:[/] {result['who']}")
+
+    # If text not provided as argument, try to read from stdin
+    if text is None:
+        if not sys.stdin.isatty():
+            text = sys.stdin.read().strip()
+        else:
+            console.print("[red]Error: No text provided. Either pass text as argument or pipe input.[/red]")
+            raise typer.Exit(1)
+
+    if not text:
+        console.print("[red]Error: Empty input.[/red]")
+        raise typer.Exit(1)
+
+    try:
+        classifier = SubitClassifier(model_path)
+    except FileNotFoundError as e:
+        console.print(f"[red]Error: {e}[/red]")
+        console.print("Train the classifier first with: python scripts/train_classifier.py")
+        raise typer.Exit(1)
+
+    with console.status("[bold green]Classifying..."):
+        result = classifier.classify(text, return_probs=probs)
+
+    console.print(f"\n[bold cyan]Text:[/] {text[:200]}{'...' if len(text) > 200 else ''}")
+    console.print(f"[bold cyan]SUBIT:[/] {result['subit']} ({result['bits']})")
+    console.print(f"[bold cyan]Archetype:[/] {result['archetype']}")
+    console.print(f"[bold cyan]Mode:[/] {result['mode']}")
+    console.print(f"[bold cyan]Who:[/] {result['who']}")
+    console.print(f"[bold cyan]Where:[/] {result['where']}")
+    console.print(f"[bold cyan]When:[/] {result['when']}")
+
+    if probs and "top_classes" in result:
+        console.print("\n[bold cyan]Top predictions:[/]")
+        for i, (idx, prob) in enumerate(result["top_classes"][:5], 1):
+            from .core import subit_to_name
+            console.print(f"  {i}. {subit_to_name(idx)} ({idx}) - {prob:.2%}")
 
 
 @app.command()
@@ -571,9 +595,8 @@ def umap(
     visualize_umap(G, output)
     console.print(f"[green]✅ UMAP saved to {output}[/]")
 
-# Додайте цю функцію до вашого `cli.py`
-@app.command()
-def query(
+@app.command(name="path")
+def query_path(
     start: str = typer.Argument(..., help="Start archetype (ID, name, or text)"),
     target: str = typer.Argument(..., help="Target archetype (ID, name, or text)"),
     graph_path: str = typer.Option("./nous_output/graph.json", "--graph", "-g", help="Path to graph.json file"),

@@ -3,7 +3,6 @@
 from typing import Optional
 from .subit_algebra import Subit
 from .core import text_to_subit
-from .agent import run_agent  # reuse existing agent system
 
 # Mode-specific system prompts for control
 MODE_PROMPTS = {

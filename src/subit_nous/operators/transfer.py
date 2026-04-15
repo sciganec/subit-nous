@@ -5,8 +5,6 @@ from typing import Optional
 
 from .base import SubitOperator
 from ..core import text_to_subit
-from ..controlled_rewrite import controlled_rewrite, semantic_delta
-
 
 @dataclass
 class TransferOperator(SubitOperator):
