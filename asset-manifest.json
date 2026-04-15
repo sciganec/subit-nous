@@ -1,0 +1,15 @@
+{
+  "files": {
+    "main.css": "/subit-nous/static/css/main.1b9bb235.css",
+    "main.js": "/subit-nous/static/js/main.312502f5.js",
+    "static/js/488.f6af8880.chunk.js": "/subit-nous/static/js/488.f6af8880.chunk.js",
+    "index.html": "/subit-nous/index.html",
+    "main.1b9bb235.css.map": "/subit-nous/static/css/main.1b9bb235.css.map",
+    "main.312502f5.js.map": "/subit-nous/static/js/main.312502f5.js.map",
+    "488.f6af8880.chunk.js.map": "/subit-nous/static/js/488.f6af8880.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.1b9bb235.css",
+    "static/js/main.312502f5.js"
+  ]
+}
